@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro + World Map</title>
+<title>Aurora Forecast Pro v t1.0.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
 .container { max-width:600px; margin: 0 auto; }
+.version { font-size: 0.4em; vertical-align: middle; color: #5bc0be; margin-left: 8px; font-weight: normal; }
 .card { background:#1c2541; padding:20px; border-radius:12px; margin-bottom:20px; position: relative; border: 1px solid #30363d; }
 .value { font-size:1.6em; margin-top:6px; min-height: 1.2em; }
 .badge { display:inline-block; padding:6px 16px; border-radius:20px; font-weight:bold; }
@@ -29,7 +30,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <body>
 
 <div id="home-screen" class="container">
-    <h1>🌌 Aurora Forecast Pro</h1>
+    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.0</span></h1>
 
     <div class="card" id="card-loc">
         <div>現在地</div>
@@ -71,6 +72,12 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div id="cloud" class="value">--</div>
         <button class="refresh-btn" onclick="refreshItem('cloud')">更新</button>
     </div>
+
+    <div class="card" id="card-short">
+        <div>短期予測 (雲量)</div>
+        <div id="forecast" class="value" style="font-size: 1rem;">--</div>
+        <button class="refresh-btn" onclick="refreshItem('short')">更新</button>
+    </div>
 </div>
 
 <div id="map-screen">
@@ -92,7 +99,7 @@ let cachedAuroraData = null;
 let map = null;
 let auroraLayer = null;
 
-/* ===== 1. 地図表示 (2つ目のコードの範囲設定を適用) ===== */
+/* ===== 1. 地図表示ロジック ===== */
 function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('map-screen').style.display = 'block';
@@ -127,7 +134,6 @@ function initMap() {
 
     auroraLayer = L.layerGroup().addTo(map);
     if (cachedAuroraData) drawAurora(cachedAuroraData);
-    
     if (myLat && myLon) {
         L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("現在地");
     }
@@ -136,23 +142,16 @@ function initMap() {
 function drawAurora(data) {
     if (!auroraLayer) return;
     auroraLayer.clearLayers();
-    const coords = data.coordinates;
-    
-    coords.forEach(p => {
+    data.coordinates.forEach(p => {
         const lon = p[0]; const lat = p[1]; const prob = p[2];
         if (prob > 10) {
             let baseLon = lon > 180 ? lon - 360 : lon;
             let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
-            
-            // 2つ目のコードと同様のループ描画 (-360から720まで)
             [-360, 0, 360, 720].forEach(offset => {
                 let finalLon = baseLon + offset;
                 if (finalLon >= -360 && finalLon <= 720) {
                     L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
-                        color: color,
-                        weight: 0,
-                        fillOpacity: prob / 100,
-                        interactive: false
+                        color: color, weight: 0, fillOpacity: prob / 100, interactive: false
                     }).addTo(auroraLayer);
                 }
             });
@@ -160,15 +159,24 @@ function drawAurora(data) {
     });
 }
 
-/* ===== 2. データ取得ロジック (Kp予想の修正) ===== */
+/* ===== 2. データ取得・ロジック ===== */
+async function getKp() {
+    try {
+        const res = await fetch(CORS + encodeURIComponent(KP_URL));
+        const data = await res.json();
+        const val = parseFloat(data[data.length - 1][1]);
+        document.getElementById("kp").textContent = val.toFixed(1);
+        return val;
+    } catch(e) { return 0; }
+}
+
 async function fetchKp3DayForecast() {
     const el = document.getElementById("kpForecast");
     try {
         const res = await fetch(CORS + encodeURIComponent(FORECAST_URL));
         const text = await res.text();
-        // より堅牢な正規表現に変更
         const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i);
-        el.innerText = match ? match[0].trim() : "現在予測データが更新されています。しばらくお待ちください。";
+        el.innerText = match ? match[0].trim() : "予測データ更新中...";
     } catch(e) { el.innerText = "取得失敗"; }
 }
 
@@ -180,7 +188,6 @@ async function checkOval() {
         const data = await res.json();
         cachedAuroraData = data;
         if (map) drawAurora(data);
-
         let bestProb = 0;
         let minDiff = 999;
         data.coordinates.forEach(p => {
@@ -188,22 +195,11 @@ async function checkOval() {
             let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - adjLon);
             if (diff < minDiff) { minDiff = diff; bestProb = p[2]; }
         });
-
         lastAuroraProb = bestProb;
         probEl.textContent = `現在地の予測発生確率: ${bestProb}%`;
         el.textContent = bestProb >= 10 ? "楕円内または近傍" : "楕円外";
         return bestProb >= 10;
     } catch(e) { el.textContent = "エラー"; return false; }
-}
-
-async function getKp() {
-    try {
-        const res = await fetch(CORS + encodeURIComponent(KP_URL));
-        const data = await res.json();
-        const val = parseFloat(data[data.length - 1][1]);
-        document.getElementById("kp").textContent = val.toFixed(1);
-        return val;
-    } catch(e) { return 0; }
 }
 
 async function getCloud() {
@@ -215,7 +211,21 @@ async function getCloud() {
     } catch(e) { return 100; }
 }
 
-/* ===== 3. 位置情報・管理 ===== */
+async function shortForecast() {
+    const el = document.getElementById("forecast");
+    try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`);
+        const data = await res.json();
+        const hr = new Date().getHours();
+        let html = (hr >= 21 || hr < 4) 
+            ? `<div>🕒 3時間後: 雲量 ${data.hourly.cloudcover[3]}%</div>` 
+            : `<div>🌙 今夜 (21:00): 雲量 ${data.hourly.cloudcover[21]}%</div>`;
+        html += `<div>📅 明日夜 (21:00): 雲量 ${data.hourly.cloudcover[24 + 21]}%</div>`;
+        el.innerHTML = html;
+    } catch(e) { el.innerHTML = "エラー"; }
+}
+
+/* ===== 3. 全体管理 ===== */
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
@@ -250,9 +260,9 @@ function toggleLoading(id, isLoading) {
 
 async function updateAll() {
     if (myLat === null) return;
-    const cards = ['card-kp', 'card-kp3', 'card-oval', 'card-cloud'];
+    const cards = ['card-kp', 'card-kp3', 'card-oval', 'card-cloud', 'card-short'];
     cards.forEach(id => toggleLoading(id, true));
-    await Promise.all([getKp(), fetchKp3DayForecast(), checkOval(), getCloud()]);
+    await Promise.all([getKp(), fetchKp3DayForecast(), checkOval(), getCloud(), shortForecast()]);
     calculateTotal();
     cards.forEach(id => toggleLoading(id, false));
 }
@@ -264,6 +274,7 @@ async function refreshItem(type) {
     if (type === 'kp3') await fetchKp3DayForecast();
     if (type === 'oval') await checkOval();
     if (type === 'cloud') await getCloud();
+    if (type === 'short') await shortForecast();
     calculateTotal();
     toggleLoading(`card-${type}`, false);
 }

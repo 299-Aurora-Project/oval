@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.1.0</title>
+<title>Aurora Forecast Pro (Beta) v t1.1.1</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -18,6 +18,7 @@ h1 { margin-bottom: 5px; width: 100%; text-align: left; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 
+/* 観測可能性バッジ */
 .badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.5rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
 
@@ -35,6 +36,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 .loading { opacity: 0.5; pointer-events: none; }
 .loading::after { content: " ⌛"; }
 
+/* ウェルカムガイダンス */
 #welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
 .welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 0 20px rgba(91, 192, 190, 0.4); z-index: 30001; }
 
@@ -45,6 +47,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     50% { transform: translateY(-15px); opacity: 1; }
 }
 
+/* モーダル */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; cursor: pointer; }
 .modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; cursor: default; }
 .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
@@ -65,68 +68,68 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div class="thin-arrow">↑</div>
         <div class="thin-arrow">↑</div>
     </div>
-    <div class="welcome-box">最初に現在地を入力してください</div>
+    <div class="welcome-box">Please enter your location first</div>
 </div>
 
 <div id="home-screen" class="container">
     <div class="header-area">
-        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.1.0</span></h1>
+        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.1.1</span></h1>
         <div class="produce-by">Produce by Shin</div>
     </div>
 
     <div class="card" id="card-loc">
-        <div class="label-main">現在地</div>
-        <div id="loc" class="value">未設定</div>
-        <button onclick="getLocation(); event.stopPropagation();">GPSで取得</button><br>
-        地名で検索:
-        <input id="cityInput" placeholder="例: Fairbanks, AK" onclick="event.stopPropagation()">
-        <button onclick="searchCity(); event.stopPropagation();">設定</button>
+        <div class="label-main">Current Location</div>
+        <div id="loc" class="value">Not Set</div>
+        <button onclick="getLocation(); event.stopPropagation();">Get via GPS</button><br>
+        Search City:
+        <input id="cityInput" placeholder="e.g. Fairbanks, AK" onclick="event.stopPropagation()">
+        <button onclick="searchCity(); event.stopPropagation();">Set</button>
     </div>
 
     <div class="card">
-        <div id="total-label" class="label-main">総合観測可能性</div>
+        <div id="total-label" class="label-main">Overall Probability</div>
         <div id="result" class="badge low">--</div>
         <div style="margin-top: 15px;">
-            <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">詳しく見る</button>
+            <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">View Details</button>
         </div>
-        <button class="refresh-btn" onclick="updateAll(); event.stopPropagation();">一括更新</button>
+        <button class="refresh-btn" onclick="updateAll(); event.stopPropagation();">Update All</button>
     </div>
 
-    <button id="toggle-data-btn" class="toggle-btn" onclick="toggleData(); event.stopPropagation();">すべての情報を表示</button>
+    <button id="toggle-data-btn" class="toggle-btn" onclick="toggleData(); event.stopPropagation();">Show All Information</button>
 
     <div id="hidden-data">
         <div class="card" id="card-oval">
-            <div class="label-main">オーロラ楕円判定</div>
+            <div class="label-main">Aurora Oval Check</div>
             <div id="oval" class="value">--</div>
             <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin-bottom: 10px;"></div>
-            <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">オーロラ楕円を表示</button>
-            <button class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">更新</button>
+            <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">View Aurora Map</button>
+            <button class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">Refresh</button>
         </div>
 
         <div class="card" id="card-kp-group">
             <div class="label-main">Kp Index</div>
-            <div style="font-size: 0.8rem; color: #8b949e;">現在:</div>
+            <div style="font-size: 0.8rem; color: #8b949e;">Current:</div>
             <div id="kp" class="value">--</div>
-            <button class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">更新</button>
+            <button class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
             
             <div class="sub-section" id="card-kp3">
-                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">短期予測:</div>
+                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="kp-short" class="value" style="font-size: 1rem;">--</div>
                 <pre id="kpForecast" style="margin-top:10px;">--</pre>
-                <button class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">更新</button>
+                <button class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">Refresh</button>
             </div>
         </div>
 
         <div class="card" id="card-cloud-group">
-            <div class="label-main">雲量</div>
-            <div style="font-size: 0.8rem; color: #8b949e;">現在:</div>
+            <div class="label-main">Cloud Cover</div>
+            <div style="font-size: 0.8rem; color: #8b949e;">Current:</div>
             <div id="cloud" class="value">--</div>
-            <button class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">更新</button>
+            <button class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
 
             <div class="sub-section" id="card-short">
-                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">短期予測:</div>
+                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="forecast" class="value" style="font-size: 1rem;">--</div>
-                <button class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">更新</button>
+                <button class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">Refresh</button>
             </div>
         </div>
     </div>
@@ -135,26 +138,26 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="detailModal" class="modal-overlay" onclick="closeModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <span class="close-modal" onclick="closeModal()">&times;</span>
-        <div class="modal-title" id="modal-label-title">観測可能性の詳細</div>
+        <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
         
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>スコア配分（場所係数補正あり）:</strong>
+            <strong>Score Breakdown (Location Weighted):</strong>
             <table class="detail-table">
-                <tr><th>項目</th><th>Max</th><th>内容</th></tr>
-                <tr><td>楕円確率</td><td>40</td><td>現在地の発生確率×0.8</td></tr>
-                <tr><td>磁気活動</td><td>40</td><td>Kp指数×10（最大Kp4）</td></tr>
-                <tr><td>空の状態</td><td>20</td><td>晴天時20 / 曇天時0</td></tr>
+                <tr><th>Item</th><th>Max</th><th>Logic</th></tr>
+                <tr><td>Oval Prob</td><td>40</td><td>Current Prob × 0.8</td></tr>
+                <tr><td>Magnetic</td><td>40</td><td>Kp Index × 10 (Max Kp4)</td></tr>
+                <tr><td>Sky Condition</td><td>20</td><td>Clear: 20 / Cloudy: 0</td></tr>
             </table>
-            <p style="font-size: 0.75rem; color: #ffbc42; margin-top: 5px;">※楕円確率が0%の地域では、物理的条件に基づき総合スコアは0になります。</p>
+            <p style="font-size: 0.75rem; color: #ffbc42; margin-top: 5px;">*If Oval Prob is 0%, the score is forced to 0 due to physical constraints.</p>
         </div>
 
         <div style="font-size: 0.85rem;">
-            <strong>判定基準:</strong>
+            <strong>Criteria:</strong>
             <ul style="margin: 5px 0; padding-left: 20px;">
-                <li>70%以上: 観測可能性 高</li>
-                <li>35%～69%: 条件次第で可能</li>
-                <li>35%未満: 観測困難</li>
+                <li>70%+: High Visibility</li>
+                <li>35%-69%: Visible under conditions</li>
+                <li>Below 35%: Difficult to observe</li>
             </ul>
         </div>
     </div>
@@ -176,26 +179,28 @@ let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData
 let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 
+/* UI制御 */
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
 function toggleData() {
     const hiddenSection = document.getElementById("hidden-data");
     const btn = document.getElementById("toggle-data-btn");
     if (hiddenSection.style.display === "block") {
         hiddenSection.style.display = "none";
-        btn.textContent = "すべての情報を表示";
+        btn.textContent = "Show All Information";
     } else {
         hiddenSection.style.display = "block";
-        btn.textContent = "データを隠す";
+        btn.textContent = "Hide All Information";
     }
 }
 function openModal() {
-    if (myLat === null) return alert("先に位置を設定してください");
+    if (myLat === null) return alert("Please set your location first");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
-    document.getElementById("modal-label-title").textContent = document.getElementById("total-label").textContent + " の詳細";
+    document.getElementById("modal-label-title").textContent = "Details: " + document.getElementById("total-label").textContent;
     document.getElementById("detailModal").style.display = "flex";
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
+/* 地図 */
 function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('map-screen').style.display = 'block';
@@ -212,7 +217,7 @@ function initMap() {
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB', noWrap: false }).addTo(map);
     auroraLayer = L.layerGroup().addTo(map);
     if (cachedAuroraData) drawAurora(cachedAuroraData);
-    if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("現在地");
+    if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("Current Location");
 }
 function drawAurora(data) {
     if (!auroraLayer) return;
@@ -232,6 +237,7 @@ function drawAurora(data) {
     });
 }
 
+/* API取得 */
 async function getKp() {
     try {
         const res = await fetch(CORS + encodeURIComponent(KP_URL));
@@ -248,11 +254,11 @@ async function fetchKp3DayForecast() {
         const res = await fetch(CORS + encodeURIComponent(FORECAST_URL));
         const text = await res.text();
         const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i);
-        el.innerText = match ? match[0].trim() : "データ更新中...";
+        el.innerText = match ? match[0].trim() : "Updating...";
         const hr = new Date().getHours();
-        let targetLabel = (hr >= 21 || hr < 3) ? "🕒 3h後" : "🌙 今夜(21:00)";
-        shortEl.innerHTML = `<div>${targetLabel}: 3-day forecast参照</div>`;
-    } catch(e) { el.innerText = "取得失敗"; }
+        let targetLabel = (hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)";
+        shortEl.innerHTML = `<div>${targetLabel}: Ref 3-day forecast</div>`;
+    } catch(e) { el.innerText = "Fetch Error"; }
 }
 async function checkOval() {
     const el = document.getElementById("oval");
@@ -268,9 +274,9 @@ async function checkOval() {
             if (diff < minDiff) { minDiff = diff; bestProb = p[2]; }
         });
         lastAuroraProb = bestProb;
-        probEl.textContent = `現在地の予測発生確率: ${bestProb}%`;
-        el.textContent = bestProb >= 10 ? "楕円内または近傍" : "楕円外";
-    } catch(e) { el.textContent = "エラー"; }
+        probEl.textContent = `Probability at your location: ${bestProb}%`;
+        el.textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval";
+    } catch(e) { el.textContent = "Error"; }
 }
 async function getCloud() {
     try {
@@ -287,57 +293,56 @@ async function shortForecast() {
         const data = await res.json();
         cloudDataHourly = data.hourly.cloudcover;
         const hr = new Date().getHours();
-        let html = (hr >= 21 || hr < 3) ? `<div>🕒 3h後: 雲量 ${cloudDataHourly[3]}%</div>` : `<div>🌙 今夜(21:00): 雲量 ${cloudDataHourly[21]}%</div>`;
-        html += `<div>📅 明日夜(21:00): 雲量 ${cloudDataHourly[45]}%</div>`;
+        let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`;
+        html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`;
         forecastEl.innerHTML = html;
-    } catch(e) { forecastEl.innerHTML = "予測取得エラー"; }
+    } catch(e) { forecastEl.innerHTML = "Fetch Error"; }
 }
 
-/* 修正された計算ロジック */
+/* 計算ロジック */
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
-    let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "現在" : "21:00";
-    document.getElementById("total-label").textContent = `総合観測可能性（${targetHourLabel}時点）`;
+    let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "Now" : "21:00";
+    document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
     
     let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
     let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 100);
     
     // 足切りロジック（場所係数）
-    // 発生確率が0なら係数0、低いほど全体を抑制
     let locationWeight = lastAuroraProb === 0 ? 0 : Math.min(1.0, 0.5 + (lastAuroraProb / 20));
-    
     let rawScore = (lastAuroraProb * 0.8) + (Math.min(evalKp, 4) * 10) + (Math.max(0, 20 - evalCloud * 0.2));
     currentTotalScore = rawScore * locationWeight;
 
-    if (currentTotalScore >= 70) { resultEl.textContent = "観測可能性 高"; resultEl.className = "badge high"; }
-    else if (currentTotalScore >= 35) { resultEl.textContent = "条件次第で可能"; resultEl.className = "badge mid"; }
-    else { resultEl.textContent = "観測困難"; resultEl.className = "badge low"; }
+    if (currentTotalScore >= 70) { resultEl.textContent = "High"; resultEl.className = "badge high"; }
+    else if (currentTotalScore >= 35) { resultEl.textContent = "Possible"; resultEl.className = "badge mid"; }
+    else { resultEl.textContent = "Low"; resultEl.className = "badge low"; }
 }
 
+/* 位置情報と自動更新 */
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
         myLat = p.coords.latitude; myLon = p.coords.longitude;
         await reverseGeocode(myLat, myLon);
-        updateAll();
+        updateAll(); // 地域確定時に自動更新
         toggleLoading('card-loc', false);
-    }, err => { alert("GPS取得失敗"); toggleLoading('card-loc', false); });
+    }, err => { alert("GPS Fetch Failed"); toggleLoading('card-loc', false); });
 }
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
     if (!city) return;
     toggleLoading('card-loc', true);
     try {
-        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ja`);
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en`);
         const data = await res.json();
         if (data.results && data.results.length > 0) {
             const res0 = data.results[0];
             myLat = res0.latitude; myLon = res0.longitude;
             document.getElementById("loc").textContent = `${res0.name}, ${res0.country}`;
-            updateAll();
+            updateAll(); // 地域確定時に自動更新
         }
-    } catch (e) { alert("検索エラー"); }
+    } catch (e) { alert("Search Error"); }
     toggleLoading('card-loc', false);
 }
 function toggleLoading(id, isLoading) {
@@ -353,7 +358,7 @@ async function updateAll() {
     cards.forEach(id => toggleLoading(id, false));
 }
 async function refreshItem(type) {
-    if (myLat === null) return alert("先に位置を設定してください");
+    if (myLat === null) return alert("Please set your location first");
     const mapping = { kp: 'card-kp-group', kp3: 'card-kp3', oval: 'card-oval', cloud: 'card-cloud-group', short: 'card-short' };
     toggleLoading(mapping[type], true);
     if (type === 'kp') await getKp();
@@ -366,9 +371,9 @@ async function refreshItem(type) {
 }
 async function reverseGeocode(lat, lon) {
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`);
         const data = await res.json();
-        document.getElementById("loc").textContent = (data.address.city || data.address.town || "不明") + ", " + data.address.country;
+        document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country;
     } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); }
 }
 </script>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Monitor - Strict Sync</title>
+    <title>Aurora Monitor - 3 Panel Sync</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
@@ -31,10 +31,11 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. 世界2枚分の正確な境界設定 (-180 から 540 まで)
+    // 1. 世界3枚分の境界設定 (-180 から 900 まで)
+    // これにより右側にスクロールの余裕を持たせ、オーバルが切れるのを防ぎます
     const bounds = L.latLngBounds(
         L.latLng(-85, -180), 
-        L.latLng(85, 540)
+        L.latLng(85, 900)
     );
 
     const map = L.map('map', {
@@ -47,7 +48,7 @@
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; CartoDB',
-        noWrap: true, // タイルが境界を越えて増えないように
+        noWrap: true, 
         bounds: bounds
     }).addTo(map);
 
@@ -85,7 +86,7 @@
 
         if (aurora && aurora.coordinates) {
             drawAurora(aurora);
-            statusEl.innerText = "● 12:49";
+            statusEl.innerText = "● Triple Panel Mode Active";
             statusEl.style.color = "#3fb950";
         }
     }
@@ -95,7 +96,7 @@
         const coords = data.coordinates;
         
         coords.forEach(p => {
-            let lon = p[0]; // 0 to 360
+            let lon = p[0]; 
             const lat = p[1];
             const prob = p[2];
 
@@ -106,12 +107,12 @@
 
                 let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
                 
-                // 1枚目の地図 (-180 ~ 180) と 2枚目の地図 (180 ~ 540) にのみ描画
-                [0, 360].forEach(offset => {
+                // 3枚の地図すべて（0, 360, 720のオフセット）に描画
+                [0, 360, 720].forEach(offset => {
                     let finalLon = baseLon + offset;
                     
-                    // 地図の境界 (-180 ~ 540) を一歩もはみ出さないようにガード
-                    if (finalLon >= -180 && finalLon <= 720) {
+                    // 3枚分 ( -180 ~ 900 ) の範囲内であれば描画
+                    if (finalLon >= -180 && finalLon <= 900) {
                         L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
                             color: color,
                             weight: 0,
@@ -129,4 +130,3 @@
 </script>
 </body>
 </html>
-

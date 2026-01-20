@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.9</title>
+<title>Aurora Forecast Pro v t1.1.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -18,7 +18,6 @@ h1 { margin-bottom: 5px; width: 100%; text-align: left; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 
-/* 観測可能性バッジの強調 */
 .badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.5rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
 
@@ -36,7 +35,6 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 .loading { opacity: 0.5; pointer-events: none; }
 .loading::after { content: " ⌛"; }
 
-/* ガイダンス・オーバーレイ */
 #welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
 .welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 0 20px rgba(91, 192, 190, 0.4); z-index: 30001; }
 
@@ -47,7 +45,6 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     50% { transform: translateY(-15px); opacity: 1; }
 }
 
-/* モーダル */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; cursor: pointer; }
 .modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; cursor: default; }
 .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
@@ -73,7 +70,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 <div id="home-screen" class="container">
     <div class="header-area">
-        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.9</span></h1>
+        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.1.0</span></h1>
         <div class="produce-by">Produce by Shin</div>
     </div>
 
@@ -142,13 +139,14 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div class="score-big"><span id="score-pct">--</span>%</div>
         
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>スコア配分（最大100点）:</strong>
+            <strong>スコア配分（場所係数補正あり）:</strong>
             <table class="detail-table">
                 <tr><th>項目</th><th>Max</th><th>内容</th></tr>
                 <tr><td>楕円確率</td><td>40</td><td>現在地の発生確率×0.8</td></tr>
                 <tr><td>磁気活動</td><td>40</td><td>Kp指数×10（最大Kp4）</td></tr>
                 <tr><td>空の状態</td><td>20</td><td>晴天時20 / 曇天時0</td></tr>
             </table>
+            <p style="font-size: 0.75rem; color: #ffbc42; margin-top: 5px;">※楕円確率が0%の地域では、物理的条件に基づき総合スコアは0になります。</p>
         </div>
 
         <div style="font-size: 0.85rem;">
@@ -179,7 +177,6 @@ let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
-
 function toggleData() {
     const hiddenSection = document.getElementById("hidden-data");
     const btn = document.getElementById("toggle-data-btn");
@@ -191,7 +188,6 @@ function toggleData() {
         btn.textContent = "データを隠す";
     }
 }
-
 function openModal() {
     if (myLat === null) return alert("先に位置を設定してください");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
@@ -200,7 +196,6 @@ function openModal() {
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-/* 以下、ロジック部分はv1.0.8を継承 */
 function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('map-screen').style.display = 'block';
@@ -236,6 +231,7 @@ function drawAurora(data) {
         }
     });
 }
+
 async function getKp() {
     try {
         const res = await fetch(CORS + encodeURIComponent(KP_URL));
@@ -296,18 +292,29 @@ async function shortForecast() {
         forecastEl.innerHTML = html;
     } catch(e) { forecastEl.innerHTML = "予測取得エラー"; }
 }
+
+/* 修正された計算ロジック */
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
     let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "現在" : "21:00";
     document.getElementById("total-label").textContent = `総合観測可能性（${targetHourLabel}時点）`;
+    
     let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
     let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 100);
-    currentTotalScore = Math.max(0, Math.min(100, (lastAuroraProb * 0.8) + (evalKp * 10) + (20 - evalCloud * 0.2)));
+    
+    // 足切りロジック（場所係数）
+    // 発生確率が0なら係数0、低いほど全体を抑制
+    let locationWeight = lastAuroraProb === 0 ? 0 : Math.min(1.0, 0.5 + (lastAuroraProb / 20));
+    
+    let rawScore = (lastAuroraProb * 0.8) + (Math.min(evalKp, 4) * 10) + (Math.max(0, 20 - evalCloud * 0.2));
+    currentTotalScore = rawScore * locationWeight;
+
     if (currentTotalScore >= 70) { resultEl.textContent = "観測可能性 高"; resultEl.className = "badge high"; }
     else if (currentTotalScore >= 35) { resultEl.textContent = "条件次第で可能"; resultEl.className = "badge mid"; }
     else { resultEl.textContent = "観測困難"; resultEl.className = "badge low"; }
 }
+
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {

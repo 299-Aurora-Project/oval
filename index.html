@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.8</title>
+<title>Aurora Forecast Pro v t1.0.9</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -18,7 +18,8 @@ h1 { margin-bottom: 5px; width: 100%; text-align: left; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 
-.badge { display:inline-block; padding:6px 16px; border-radius:20px; font-weight:bold; }
+/* 観測可能性バッジの強調 */
+.badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.5rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
 
 input, button { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; }
@@ -28,7 +29,6 @@ button:hover { background: #5bc0be; color: #0b132b; }
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
 
-/* 展開用スタイル */
 #hidden-data { display: none; }
 .toggle-btn { width: 100%; margin-bottom: 20px; background: #1c2541; border: 1px solid #3a506b; color: #5bc0be; }
 
@@ -42,21 +42,19 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 .arrow-container { display: flex; gap: 15px; margin-bottom: 10px; }
 .thin-arrow { font-size: 2.5rem; color: #5bc0be; font-weight: 100; animation: bounceThin 1.2s infinite; }
-/* 同時に動くようディレイを削除 */
 @keyframes bounceThin {
     0%, 100% { transform: translateY(0); opacity: 0.5; }
     50% { transform: translateY(-15px); opacity: 1; }
 }
 
-/* モーダル (v t1.0.3仕様に復元) */
-.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; }
-.modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; }
+/* モーダル */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; cursor: pointer; }
+.modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; cursor: default; }
 .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
 .score-big { font-size: 2.5rem; text-align: center; color: #fff; margin: 10px 0; font-weight: bold; }
 .detail-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; margin-top: 10px; }
 .detail-table th, .detail-table td { text-align: left; padding: 8px; border-bottom: 1px solid #30363d; }
 
-/* 地図画面 */
 #map-screen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; }
 #map { width: 100%; height: 100%; background: #000; }
 #back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; border: 1px solid #30363d; color: white; padding: 8px 16px; }
@@ -75,7 +73,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 <div id="home-screen" class="container">
     <div class="header-area">
-        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.8</span></h1>
+        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.9</span></h1>
         <div class="produce-by">Produce by Shin</div>
     </div>
 
@@ -91,8 +89,8 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     <div class="card">
         <div id="total-label" class="label-main">総合観測可能性</div>
         <div id="result" class="badge low">--</div>
-        <div style="margin-top: 10px;">
-            <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.8em; background: #1c2541; border: 1px solid #3a506b;">詳しく見る</button>
+        <div style="margin-top: 15px;">
+            <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">詳しく見る</button>
         </div>
         <button class="refresh-btn" onclick="updateAll(); event.stopPropagation();">一括更新</button>
     </div>
@@ -137,7 +135,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     </div>
 </div>
 
-<div id="detailModal" class="modal-overlay">
+<div id="detailModal" class="modal-overlay" onclick="closeModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <div class="modal-title" id="modal-label-title">観測可能性の詳細</div>
@@ -180,10 +178,8 @@ let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData
 let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 
-/* ガイダンス制御 */
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
 
-/* 展開制御 */
 function toggleData() {
     const hiddenSection = document.getElementById("hidden-data");
     const btn = document.getElementById("toggle-data-btn");
@@ -196,7 +192,6 @@ function toggleData() {
     }
 }
 
-/* モーダル制御 */
 function openModal() {
     if (myLat === null) return alert("先に位置を設定してください");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
@@ -205,7 +200,7 @@ function openModal() {
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-/* 地図ロジック */
+/* 以下、ロジック部分はv1.0.8を継承 */
 function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('map-screen').style.display = 'block';
@@ -241,8 +236,6 @@ function drawAurora(data) {
         }
     });
 }
-
-/* データ取得 */
 async function getKp() {
     try {
         const res = await fetch(CORS + encodeURIComponent(KP_URL));
@@ -303,7 +296,6 @@ async function shortForecast() {
         forecastEl.innerHTML = html;
     } catch(e) { forecastEl.innerHTML = "予測取得エラー"; }
 }
-
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
@@ -316,7 +308,6 @@ function calculateTotal() {
     else if (currentTotalScore >= 35) { resultEl.textContent = "条件次第で可能"; resultEl.className = "badge mid"; }
     else { resultEl.textContent = "観測困難"; resultEl.className = "badge low"; }
 }
-
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {

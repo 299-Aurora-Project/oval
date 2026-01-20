@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.7</title>
+<title>Aurora Forecast Pro v t1.0.8</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -28,6 +28,10 @@ button:hover { background: #5bc0be; color: #0b132b; }
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
 
+/* 展開用スタイル */
+#hidden-data { display: none; }
+.toggle-btn { width: 100%; margin-bottom: 20px; background: #1c2541; border: 1px solid #3a506b; color: #5bc0be; }
+
 pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospace; font-size: 0.85em; overflow-x: auto; white-space: pre-wrap; border: 1px solid #3a506b; min-height: 50px; }
 .loading { opacity: 0.5; pointer-events: none; }
 .loading::after { content: " ⌛"; }
@@ -36,21 +40,21 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 #welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
 .welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 0 20px rgba(91, 192, 190, 0.4); z-index: 30001; }
 
-/* 細い矢印アニメーション */
 .arrow-container { display: flex; gap: 15px; margin-bottom: 10px; }
 .thin-arrow { font-size: 2.5rem; color: #5bc0be; font-weight: 100; animation: bounceThin 1.2s infinite; }
-.thin-arrow:nth-child(2) { animation-delay: 0.2s; }
-.thin-arrow:nth-child(3) { animation-delay: 0.4s; }
+/* 同時に動くようディレイを削除 */
 @keyframes bounceThin {
     0%, 100% { transform: translateY(0); opacity: 0.5; }
     50% { transform: translateY(-15px); opacity: 1; }
 }
 
-/* モーダル */
+/* モーダル (v t1.0.3仕様に復元) */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; }
 .modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; }
 .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
 .score-big { font-size: 2.5rem; text-align: center; color: #fff; margin: 10px 0; font-weight: bold; }
+.detail-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; margin-top: 10px; }
+.detail-table th, .detail-table td { text-align: left; padding: 8px; border-bottom: 1px solid #30363d; }
 
 /* 地図画面 */
 #map-screen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; }
@@ -71,7 +75,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 <div id="home-screen" class="container">
     <div class="header-area">
-        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.7</span></h1>
+        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.8</span></h1>
         <div class="produce-by">Produce by Shin</div>
     </div>
 
@@ -93,38 +97,42 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <button class="refresh-btn" onclick="updateAll(); event.stopPropagation();">一括更新</button>
     </div>
 
-    <div class="card" id="card-oval">
-        <div class="label-main">オーロラ楕円判定</div>
-        <div id="oval" class="value">--</div>
-        <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin-bottom: 10px;"></div>
-        <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">オーロラ楕円を表示</button>
-        <button class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">更新</button>
-    </div>
+    <button id="toggle-data-btn" class="toggle-btn" onclick="toggleData(); event.stopPropagation();">すべての情報を表示</button>
 
-    <div class="card" id="card-kp-group">
-        <div class="label-main">Kp Index</div>
-        <div style="font-size: 0.8rem; color: #8b949e;">現在:</div>
-        <div id="kp" class="value">--</div>
-        <button class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">更新</button>
-        
-        <div class="sub-section" id="card-kp3">
-            <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">短期予測:</div>
-            <div id="kp-short" class="value" style="font-size: 1rem;">--</div>
-            <pre id="kpForecast" style="margin-top:10px;">--</pre>
-            <button class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">更新</button>
+    <div id="hidden-data">
+        <div class="card" id="card-oval">
+            <div class="label-main">オーロラ楕円判定</div>
+            <div id="oval" class="value">--</div>
+            <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin-bottom: 10px;"></div>
+            <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">オーロラ楕円を表示</button>
+            <button class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">更新</button>
         </div>
-    </div>
 
-    <div class="card" id="card-cloud-group">
-        <div class="label-main">雲量</div>
-        <div style="font-size: 0.8rem; color: #8b949e;">現在:</div>
-        <div id="cloud" class="value">--</div>
-        <button class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">更新</button>
+        <div class="card" id="card-kp-group">
+            <div class="label-main">Kp Index</div>
+            <div style="font-size: 0.8rem; color: #8b949e;">現在:</div>
+            <div id="kp" class="value">--</div>
+            <button class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">更新</button>
+            
+            <div class="sub-section" id="card-kp3">
+                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">短期予測:</div>
+                <div id="kp-short" class="value" style="font-size: 1rem;">--</div>
+                <pre id="kpForecast" style="margin-top:10px;">--</pre>
+                <button class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">更新</button>
+            </div>
+        </div>
 
-        <div class="sub-section" id="card-short">
-            <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">短期予測:</div>
-            <div id="forecast" class="value" style="font-size: 1rem;">--</div>
-            <button class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">更新</button>
+        <div class="card" id="card-cloud-group">
+            <div class="label-main">雲量</div>
+            <div style="font-size: 0.8rem; color: #8b949e;">現在:</div>
+            <div id="cloud" class="value">--</div>
+            <button class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">更新</button>
+
+            <div class="sub-section" id="card-short">
+                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">短期予測:</div>
+                <div id="forecast" class="value" style="font-size: 1rem;">--</div>
+                <button class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">更新</button>
+            </div>
         </div>
     </div>
 </div>
@@ -134,9 +142,24 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <div class="modal-title" id="modal-label-title">観測可能性の詳細</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
-        <div style="font-size: 0.85rem; margin-top: 15px; color:#8b949e;">
-            <strong>配分:</strong> 楕円(40) + Kp(40) + 雲量(20)<br>
-            <strong>基準:</strong> 70%↑高 / 35%↑中 / 35%↓低
+        
+        <div style="font-size: 0.85rem; margin-bottom: 15px;">
+            <strong>スコア配分（最大100点）:</strong>
+            <table class="detail-table">
+                <tr><th>項目</th><th>Max</th><th>内容</th></tr>
+                <tr><td>楕円確率</td><td>40</td><td>現在地の発生確率×0.8</td></tr>
+                <tr><td>磁気活動</td><td>40</td><td>Kp指数×10（最大Kp4）</td></tr>
+                <tr><td>空の状態</td><td>20</td><td>晴天時20 / 曇天時0</td></tr>
+            </table>
+        </div>
+
+        <div style="font-size: 0.85rem;">
+            <strong>判定基準:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>70%以上: 観測可能性 高</li>
+                <li>35%～69%: 条件次第で可能</li>
+                <li>35%未満: 観測困難</li>
+            </ul>
         </div>
     </div>
 </div>
@@ -157,7 +180,23 @@ let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData
 let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 
+/* ガイダンス制御 */
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
+
+/* 展開制御 */
+function toggleData() {
+    const hiddenSection = document.getElementById("hidden-data");
+    const btn = document.getElementById("toggle-data-btn");
+    if (hiddenSection.style.display === "block") {
+        hiddenSection.style.display = "none";
+        btn.textContent = "すべての情報を表示";
+    } else {
+        hiddenSection.style.display = "block";
+        btn.textContent = "データを隠す";
+    }
+}
+
+/* モーダル制御 */
 function openModal() {
     if (myLat === null) return alert("先に位置を設定してください");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);

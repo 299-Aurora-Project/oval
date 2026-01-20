@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.2</title>
+<title>Aurora Forecast Pro v t1.0.3</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -21,16 +21,26 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 .loading { opacity: 0.5; pointer-events: none; }
 .loading::after { content: " ⌛"; }
 
-/* 地図画面のスタイル */
+/* モーダル（ミニウィンドウ）のスタイル */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; }
+.modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; }
+.close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
+.close-modal:hover { color: #fff; }
+.modal-title { font-size: 1.2rem; border-bottom: 1px solid #30363d; margin-bottom: 15px; padding-bottom: 5px; color: #5bc0be; }
+.score-big { font-size: 2.5rem; text-align: center; color: #fff; margin: 10px 0; font-weight: bold; }
+.detail-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; margin-top: 10px; }
+.detail-table th, .detail-table td { text-align: left; padding: 8px; border-bottom: 1px solid #30363d; }
+
+/* 地図画面 */
 #map-screen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; }
 #map { width: 100%; height: 100%; background: #000; }
-#back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; border: 1px solid #30363d; color: white; padding: 8px 16px; box-shadow: 0 1px 5px rgba(0,0,0,0.65); }
+#back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; border: 1px solid #30363d; color: white; padding: 8px 16px; }
 </style>
 </head>
 <body>
 
 <div id="home-screen" class="container">
-    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.2</span></h1>
+    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.3</span></h1>
 
     <div class="card" id="card-loc">
         <div>現在地</div>
@@ -44,6 +54,9 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     <div class="card">
         <div id="total-label">総合観測可能性</div>
         <div id="result" class="badge low">--</div>
+        <div style="margin-top: 10px;">
+            <button onclick="openModal()" style="font-size: 0.8em; background: #1c2541; border: 1px solid #3a506b;">詳しく見る</button>
+        </div>
         <button class="refresh-btn" onclick="updateAll()">一括更新</button>
     </div>
 
@@ -80,6 +93,33 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     </div>
 </div>
 
+<div id="detailModal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div class="modal-title" id="modal-label-title">観測可能性の詳細</div>
+        <div class="score-big"><span id="score-pct">--</span>%</div>
+        
+        <div style="font-size: 0.85rem; margin-bottom: 15px;">
+            <strong>スコア配分（最大100点）:</strong>
+            <table class="detail-table">
+                <tr><th>項目</th><th>Max</th><th>内容</th></tr>
+                <tr><td>楕円確率</td><td>40</td><td>現在地の発生確率×0.8</td></tr>
+                <tr><td>磁気活動</td><td>40</td><td>Kp指数×10（最大Kp4）</td></tr>
+                <tr><td>空の状態</td><td>20</td><td>晴天時20 / 曇天時0</td></tr>
+            </table>
+        </div>
+
+        <div style="font-size: 0.85rem;">
+            <strong>判定基準:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>70%以上: 観測可能性 高</li>
+                <li>35%～69%: 条件次第で可能</li>
+                <li>35%未満: 観測困難</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
 <div id="map-screen">
     <button class="btn" id="back-btn" onclick="hideMapScreen()">← Back</button>
     <div id="map"></div>
@@ -92,15 +132,22 @@ const KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.j
 const OVAL_URL = "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json";
 const FORECAST_URL = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";
 
-let myLat = null;
-let myLon = null;
-let lastAuroraProb = 0;
-let cachedAuroraData = null;
-let map = null;
-let auroraLayer = null;
-let cloudDataHourly = null; // 予測計算用の保持データ
+let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData = null;
+let map = null; let auroraLayer = null; let cloudDataHourly = null;
+let currentTotalScore = 0;
 
-/* ===== 地図表示 ===== */
+/* ===== モーダル制御 ===== */
+function openModal() {
+    if (myLat === null) return alert("先に位置を設定してください");
+    document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
+    const label = document.getElementById("total-label").textContent;
+    document.getElementById("modal-label-title").textContent = label + " の詳細";
+    document.getElementById("detailModal").style.display = "flex";
+}
+function closeModal() { document.getElementById("detailModal").style.display = "none"; }
+window.onclick = function(event) { if (event.target == document.getElementById("detailModal")) closeModal(); }
+
+/* ===== 地図ロジック (省略なし) ===== */
 function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('map-screen').style.display = 'block';
@@ -137,7 +184,7 @@ function drawAurora(data) {
     });
 }
 
-/* ===== データ取得 ===== */
+/* ===== データ取得ロジック ===== */
 async function getKp() {
     try {
         const res = await fetch(CORS + encodeURIComponent(KP_URL));
@@ -147,7 +194,6 @@ async function getKp() {
         return val;
     } catch(e) { return 0; }
 }
-
 async function fetchKp3DayForecast() {
     const el = document.getElementById("kpForecast");
     try {
@@ -157,15 +203,13 @@ async function fetchKp3DayForecast() {
         el.innerText = match ? match[0].trim() : "予測データ更新中...";
     } catch(e) { el.innerText = "取得失敗"; }
 }
-
 async function checkOval() {
     const el = document.getElementById("oval");
     const probEl = document.getElementById("oval-prob");
     try {
         const res = await fetch(CORS + encodeURIComponent(OVAL_URL));
         const data = await res.json();
-        cachedAuroraData = data;
-        if (map) drawAurora(data);
+        cachedAuroraData = data; if (map) drawAurora(data);
         let bestProb = 0; let minDiff = 999;
         data.coordinates.forEach(p => {
             let adjLon = p[0] > 180 ? p[0] - 360 : p[0];
@@ -177,7 +221,6 @@ async function checkOval() {
         el.textContent = bestProb >= 10 ? "楕円内または近傍" : "楕円外";
     } catch(e) { el.textContent = "エラー"; }
 }
-
 async function getCloud() {
     try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`);
@@ -186,62 +229,47 @@ async function getCloud() {
         return data.current.cloudcover;
     } catch(e) { return 100; }
 }
-
 async function shortForecast() {
     const forecastEl = document.getElementById("forecast");
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`;
-        const res = await fetch(url);
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`);
         const data = await res.json();
         cloudDataHourly = data.hourly.cloudcover;
-
-        const now = new Date(); const currentHour = now.getHours();
-        let html = "";
-        if (currentHour >= 21 || currentHour < 3) {
-            html += `<div>🕒 3時間後: 雲量 ${cloudDataHourly[3]}%</div>`;
-        } else {
-            html += `<div>🌙 今夜 (21:00): 雲量 ${cloudDataHourly[21]}%</div>`;
-        }
-        html += `<div>📅 明日夜 (21:00): 雲量 ${cloudDataHourly[24 + 21]}%</div>`;
+        const hr = new Date().getHours();
+        let html = (hr >= 21 || hr < 3) ? `<div>🕒 3時間後: 雲量 ${cloudDataHourly[3]}%</div>` : `<div>🌙 今夜 (21:00): 雲量 ${cloudDataHourly[21]}%</div>`;
+        html += `<div>📅 明日夜 (21:00): 雲量 ${cloudDataHourly[24+21]}%</div>`;
         forecastEl.innerHTML = html;
     } catch(e) { forecastEl.innerHTML = "予測取得エラー"; }
 }
 
-/* ===== 統合判定 (動的切り替え) ===== */
+/* ===== 統合判定 ===== */
 function calculateTotal() {
-    const now = new Date();
-    const currentHour = now.getHours();
+    const now = new Date(); const currentHour = now.getHours();
     const labelEl = document.getElementById("total-label");
     const resultEl = document.getElementById("result");
-
     let targetHourLabel = "";
     let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
     let evalCloud = parseInt(document.getElementById("cloud").textContent) || 100;
     let evalProb = lastAuroraProb;
 
-    // 時間帯による判定ロジックの切り替え
     if (currentHour >= 21 || currentHour < 3) {
-        // 【現在】21時〜深夜3時：リアルタイムデータ
         targetHourLabel = "現在";
-    } else if (currentHour >= 3 && currentHour < 21) {
-        // 【予測】3時〜21時：今夜21時時点の予測
+    } else {
         targetHourLabel = "21:00";
         if (cloudDataHourly) evalCloud = cloudDataHourly[21];
-        // 予測時はKpや楕円確率は現在の値（または傾向）をベースにするが、
-        // 厳密な未来Kpは3日間予想を参照する形になるため、ここでは現在の活動を維持
     }
-
     labelEl.textContent = `総合観測可能性（${targetHourLabel}時点）`;
 
     // スコア計算
-    let score = (evalProb * 0.8) + (evalKp * 10) + (20 - evalCloud * 0.2);
-    
-    if (score >= 70) { resultEl.textContent = "観測可能性 高"; resultEl.className = "badge high"; }
-    else if (score >= 35) { resultEl.textContent = "条件次第で可能"; resultEl.className = "badge mid"; }
+    currentTotalScore = (evalProb * 0.8) + (evalKp * 10) + (20 - evalCloud * 0.2);
+    currentTotalScore = Math.max(0, Math.min(100, currentTotalScore));
+
+    if (currentTotalScore >= 70) { resultEl.textContent = "観測可能性 高"; resultEl.className = "badge high"; }
+    else if (currentTotalScore >= 35) { resultEl.textContent = "条件次第で可能"; resultEl.className = "badge mid"; }
     else { resultEl.textContent = "観測困難"; resultEl.className = "badge low"; }
 }
 
-/* ===== 管理機能 ===== */
+/* ===== 管理 ===== */
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {

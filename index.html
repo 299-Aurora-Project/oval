@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Monitor - Strict Bounds</title>
+    <title>Aurora Monitor - Strict Sync</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
@@ -31,25 +31,23 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. 世界2枚分の境界を定義 (経度 -180~180 を 2枚分で -180~540 と定義)
-    // こうすることで「左に1枚、右に1枚」の状態を作ります。
+    // 1. 世界2枚分の正確な境界設定 (-180 から 540 まで)
     const bounds = L.latLngBounds(
-        L.latLng(-85, -180), // 南西の角
-        L.latLng(85, 540)    // 北東の角 (180 + 360)
+        L.latLng(-85, -180), 
+        L.latLng(85, 540)
     );
 
     const map = L.map('map', {
         maxBounds: bounds,
-        maxBoundsViscosity: 1.0, // 境界でピタッと止める
+        maxBoundsViscosity: 1.0,
         minZoom: 2,
         maxZoom: 10,
         worldCopyJump: false
-    }).setView([70, 180], 2); // 2枚の地図の継ぎ目（日付変更線あたり）を初期位置に
+    }).setView([70, 180], 2);
 
-    // タイル自体がループしないように設定
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; CartoDB',
-        noWrap: true, // これでタイルの無限ループを停止
+        noWrap: true, // タイルが境界を越えて増えないように
         bounds: bounds
     }).addTo(map);
 
@@ -60,15 +58,13 @@
             const response = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
             if (!response.ok) return null;
             return await response.json();
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
     async function updateDashboard() {
         const statusEl = document.getElementById('status-msg');
         const container = document.getElementById('stats-container');
-        statusEl.innerText = "Syncing with NOAA...";
+        statusEl.innerText = "Syncing Data...";
         statusEl.style.color = "yellow";
 
         const mag = await safeFetchJSON('https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json');
@@ -82,14 +78,14 @@
         }
         if (plasma && plasma.length > 0) {
             const val = plasma[plasma.length - 1];
-            html += `<div class="stat-card"><div class="stat-label">Wind Speed</div><div class="stat-value">${parseFloat(val[2]).toFixed(0)} km/s</div></div>`;
-            html += `<div class="stat-card"><div class="stat-label">Density</div><div class="stat-value">${parseFloat(val[1]).toFixed(1)} p/cm³</div></div>`;
+            html += `<div class="stat-card"><div class="stat-label">Wind Speed</div><div class="stat-value">${parseFloat(val[2]).toFixed(0)} km/s</div></div>
+                     <div class="stat-card"><div class="stat-label">Density</div><div class="stat-value">${parseFloat(val[1]).toFixed(1)} p/cm³</div></div>`;
         }
-        container.innerHTML = html || "Waiting for data...";
+        container.innerHTML = html || "Updating...";
 
         if (aurora && aurora.coordinates) {
             drawAurora(aurora);
-            statusEl.innerText = "● Strict Two-Panel Mode";
+            statusEl.innerText = "● Boundary Locked & Synced";
             statusEl.style.color = "#3fb950";
         }
     }
@@ -99,22 +95,30 @@
         const coords = data.coordinates;
         
         coords.forEach(p => {
-            let lon = p[0];
+            let lon = p[0]; // 0 to 360
             const lat = p[1];
             const prob = p[2];
 
             if (prob > 10) { 
-                if (lon > 180) lon -= 360; // 一旦 -180 ~ 180 に正規化
+                // 経度を -180 ~ 180 に正規化
+                let baseLon = lon;
+                if (baseLon > 180) baseLon -= 360;
+
                 let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
                 
-                // 2枚の地図それぞれに描画 (1枚目: lon, 2枚目: lon + 360)
+                // 1枚目の地図 (-180 ~ 180) と 2枚目の地図 (180 ~ 540) にのみ描画
                 [0, 360].forEach(offset => {
-                    L.rectangle([[lat, lon + offset], [lat + 2, lon + offset + 2]], {
-                        color: color,
-                        weight: 0,
-                        fillOpacity: prob / 100,
-                        interactive: false
-                    }).addTo(auroraLayer);
+                    let finalLon = baseLon + offset;
+                    
+                    // 地図の境界 (-180 ~ 540) を一歩もはみ出さないようにガード
+                    if (finalLon >= -180 && finalLon <= 540) {
+                        L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
+                            color: color,
+                            weight: 0,
+                            fillOpacity: prob / 100,
+                            interactive: false
+                        }).addTo(auroraLayer);
+                    }
                 });
             }
         });

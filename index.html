@@ -3,19 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Monitor - Triple Panel Lock</title>
+    <title>Aurora Monitor - Interactive</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
         #dashboard { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
         #sidebar { padding: 20px; overflow-y: auto; border-right: 1px solid #30363d; background: #161b22; z-index: 1000; }
-        #map { width: 100%; height: 100%; background: #000; }
+        #map-container { width: 100%; height: 100%; position: relative; background: #000; display: flex; align-items: center; justify-content: center; }
+        #map { width: 100%; height: 100%; display: none; } /* 初期状態は非表示 */
+        
         .stat-card { background: #0d1117; padding: 15px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #30363d; }
         .stat-value { font-size: 1.6rem; font-weight: bold; color: #58a6ff; font-family: monospace; }
         .stat-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
         .status-good { color: #3fb950; }
         #status-msg { font-size: 0.8rem; margin-bottom: 15px; padding: 5px; border-radius: 4px; font-weight: bold; }
         h2 { font-size: 1.2rem; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+
+        /* ボタンのスタイル */
+        #show-map-btn {
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #ffffff;
+            background-color: #238636;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #show-map-btn:hover { background-color: #2ea043; }
     </style>
 </head>
 <body>
@@ -26,30 +42,50 @@
         <div id="status-msg">Connecting...</div>
         <div id="stats-container"></div>
     </div>
-    <div id="map"></div>
+    <div id="map-container">
+        <button id="show-map-btn" onclick="initMap()">Show Aurora Oval</button>
+        <div id="map"></div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. スクロール制限の定義 (左に1枚分、右に2枚分まで許可)
-    const minLon = -360; // 左端
-    const maxLon = 720;  // 右端
-    const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon));
+    let map = null;
+    let auroraLayer = null;
+    let cachedAuroraData = null;
 
-    const map = L.map('map', {
-        maxBounds: bounds,
-        maxBoundsViscosity: 1.0,
-        minZoom: 2,
-        worldCopyJump: false // 独自のコピー描画を行うためOFF
-    }).setView([70, 0], 2);
+    // 1. 地図の初期化（ボタンが押された時に実行）
+    function initMap() {
+        document.getElementById('show-map-btn').style.display = 'none';
+        const mapEl = document.getElementById('map');
+        mapEl.style.display = 'block';
 
-    // 2. タイルの設定 (noWrapをfalseにして、背景地図が無限に出るようにする)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CartoDB',
-        noWrap: false // ここをfalseにすることで背景地図が途切れません
-    }).addTo(map);
+        const minLon = -360;
+        const maxLon = 720;
+        const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon));
 
-    let auroraLayer = L.layerGroup().addTo(map);
+        map = L.map('map', {
+            maxBounds: bounds,
+            maxBoundsViscosity: 1.0,
+            minZoom: 2,
+            worldCopyJump: false
+        }).setView([70, 0], 2);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CartoDB',
+            noWrap: false
+        }).addTo(map);
+
+        auroraLayer = L.layerGroup().addTo(map);
+
+        // キャッシュデータがあれば即描画
+        if (cachedAuroraData) {
+            drawAurora(cachedAuroraData);
+        }
+        
+        // 地図のリサイズ問題を回避
+        setTimeout(() => { map.invalidateSize(); }, 100);
+    }
 
     async function safeFetchJSON(url) {
         try {
@@ -82,13 +118,15 @@
         container.innerHTML = html || "Updating...";
 
         if (aurora && aurora.coordinates) {
-            drawAurora(aurora);
-            statusEl.innerText = "● 12:56";
+            cachedAuroraData = aurora; // データを保持
+            if (map) drawAurora(aurora); // 地図があれば描画
+            statusEl.innerText = "● Live Stats Synced";
             statusEl.style.color = "#3fb950";
         }
     }
 
     function drawAurora(data) {
+        if (!auroraLayer) return;
         auroraLayer.clearLayers();
         const coords = data.coordinates;
         
@@ -98,18 +136,12 @@
             const prob = p[2];
 
             if (prob > 10) { 
-                // 経度を -180 ~ 180 に正規化
-                let baseLon = lon;
-                if (baseLon > 180) baseLon -= 360;
-
+                let baseLon = lon > 180 ? lon - 360 : lon;
                 let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
                 
-                // 許可したスクロール範囲（-360, 0, 360, 720）すべてに描画
                 [-360, 0, 360, 720].forEach(offset => {
                     let finalLon = baseLon + offset;
-                    
-                    // スクロール可能な範囲内のみ描画
-                    if (finalLon >= minLon && finalLon <= maxLon) {
+                    if (finalLon >= -360 && finalLon <= 720) {
                         L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
                             color: color,
                             weight: 0,

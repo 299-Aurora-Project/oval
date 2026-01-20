@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.1</title>
+<title>Aurora Forecast Pro v t1.0.2</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -30,7 +30,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <body>
 
 <div id="home-screen" class="container">
-    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.1</span></h1>
+    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.2</span></h1>
 
     <div class="card" id="card-loc">
         <div>現在地</div>
@@ -42,7 +42,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     </div>
 
     <div class="card">
-        <div>観測可能性（総合判定）</div>
+        <div id="total-label">総合観測可能性</div>
         <div id="result" class="badge low">--</div>
         <button class="refresh-btn" onclick="updateAll()">一括更新</button>
     </div>
@@ -98,47 +98,27 @@ let lastAuroraProb = 0;
 let cachedAuroraData = null;
 let map = null;
 let auroraLayer = null;
+let cloudDataHourly = null; // 予測計算用の保持データ
 
-/* ===== 1. 地図表示ロジック ===== */
+/* ===== 地図表示 ===== */
 function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('map-screen').style.display = 'block';
-    if (!map) {
-        initMap();
-    } else {
-        setTimeout(() => { map.invalidateSize(); }, 50);
-    }
+    if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50);
 }
-
 function hideMapScreen() {
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('home-screen').style.display = 'block';
 }
-
 function initMap() {
-    const minLon = -360;
-    const maxLon = 720;
+    const minLon = -360; const maxLon = 720;
     const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon));
-
-    map = L.map('map', {
-        maxBounds: bounds,
-        maxBoundsViscosity: 1.0,
-        minZoom: 2,
-        worldCopyJump: false
-    }).setView([myLat || 70, myLon || 0], 3);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CartoDB',
-        noWrap: false
-    }).addTo(map);
-
+    map = L.map('map', { maxBounds: bounds, maxBoundsViscosity: 1.0, minZoom: 2, worldCopyJump: false }).setView([myLat || 70, myLon || 0], 3);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB', noWrap: false }).addTo(map);
     auroraLayer = L.layerGroup().addTo(map);
     if (cachedAuroraData) drawAurora(cachedAuroraData);
-    if (myLat && myLon) {
-        L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("現在地");
-    }
+    if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("現在地");
 }
-
 function drawAurora(data) {
     if (!auroraLayer) return;
     auroraLayer.clearLayers();
@@ -150,16 +130,14 @@ function drawAurora(data) {
             [-360, 0, 360, 720].forEach(offset => {
                 let finalLon = baseLon + offset;
                 if (finalLon >= -360 && finalLon <= 720) {
-                    L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
-                        color: color, weight: 0, fillOpacity: prob / 100, interactive: false
-                    }).addTo(auroraLayer);
+                    L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], { color: color, weight: 0, fillOpacity: prob / 100, interactive: false }).addTo(auroraLayer);
                 }
             });
         }
     });
 }
 
-/* ===== 2. データ取得・ロジック ===== */
+/* ===== データ取得 ===== */
 async function getKp() {
     try {
         const res = await fetch(CORS + encodeURIComponent(KP_URL));
@@ -188,8 +166,7 @@ async function checkOval() {
         const data = await res.json();
         cachedAuroraData = data;
         if (map) drawAurora(data);
-        let bestProb = 0;
-        let minDiff = 999;
+        let bestProb = 0; let minDiff = 999;
         data.coordinates.forEach(p => {
             let adjLon = p[0] > 180 ? p[0] - 360 : p[0];
             let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - adjLon);
@@ -198,8 +175,7 @@ async function checkOval() {
         lastAuroraProb = bestProb;
         probEl.textContent = `現在地の予測発生確率: ${bestProb}%`;
         el.textContent = bestProb >= 10 ? "楕円内または近傍" : "楕円外";
-        return bestProb >= 10;
-    } catch(e) { el.textContent = "エラー"; return false; }
+    } catch(e) { el.textContent = "エラー"; }
 }
 
 async function getCloud() {
@@ -211,40 +187,61 @@ async function getCloud() {
     } catch(e) { return 100; }
 }
 
-/* アレンジ：時間帯による動的判定 */
 async function shortForecast() {
     const forecastEl = document.getElementById("forecast");
     try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`;
         const res = await fetch(url);
         const data = await res.json();
+        cloudDataHourly = data.hourly.cloudcover;
 
-        const now = new Date();
-        const currentHour = now.getHours();
+        const now = new Date(); const currentHour = now.getHours();
         let html = "";
-
-        // 1つ目の予測枠
-        if (currentHour >= 21 || currentHour < 4) {
-            // 夜間（21時〜深夜）の場合：3時間後の予報
-            const cloud3h = data.hourly.cloudcover[3]; 
-            html += `<div>🕒 3時間後: 雲量 ${cloud3h}%</div>`;
+        if (currentHour >= 21 || currentHour < 3) {
+            html += `<div>🕒 3時間後: 雲量 ${cloudDataHourly[3]}%</div>`;
         } else {
-            // 日中の場合：今夜21時の予報
-            const cloudTonight = data.hourly.cloudcover[21];
-            html += `<div>🌙 今夜 (21:00): 雲量 ${cloudTonight}%</div>`;
+            html += `<div>🌙 今夜 (21:00): 雲量 ${cloudDataHourly[21]}%</div>`;
         }
-
-        // 2つ目の予測枠（翌晩21時）
-        const cloudTomorrow = data.hourly.cloudcover[24 + 21];
-        html += `<div>📅 明日夜 (21:00): 雲量 ${cloudTomorrow}%</div>`;
-
+        html += `<div>📅 明日夜 (21:00): 雲量 ${cloudDataHourly[24 + 21]}%</div>`;
         forecastEl.innerHTML = html;
-    } catch(e) {
-        forecastEl.innerHTML = "予測取得エラー";
-    }
+    } catch(e) { forecastEl.innerHTML = "予測取得エラー"; }
 }
 
-/* ===== 3. 全体管理 ===== */
+/* ===== 統合判定 (動的切り替え) ===== */
+function calculateTotal() {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const labelEl = document.getElementById("total-label");
+    const resultEl = document.getElementById("result");
+
+    let targetHourLabel = "";
+    let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
+    let evalCloud = parseInt(document.getElementById("cloud").textContent) || 100;
+    let evalProb = lastAuroraProb;
+
+    // 時間帯による判定ロジックの切り替え
+    if (currentHour >= 21 || currentHour < 3) {
+        // 【現在】21時〜深夜3時：リアルタイムデータ
+        targetHourLabel = "現在";
+    } else if (currentHour >= 3 && currentHour < 21) {
+        // 【予測】3時〜21時：今夜21時時点の予測
+        targetHourLabel = "21:00";
+        if (cloudDataHourly) evalCloud = cloudDataHourly[21];
+        // 予測時はKpや楕円確率は現在の値（または傾向）をベースにするが、
+        // 厳密な未来Kpは3日間予想を参照する形になるため、ここでは現在の活動を維持
+    }
+
+    labelEl.textContent = `総合観測可能性（${targetHourLabel}時点）`;
+
+    // スコア計算
+    let score = (evalProb * 0.8) + (evalKp * 10) + (20 - evalCloud * 0.2);
+    
+    if (score >= 70) { resultEl.textContent = "観測可能性 高"; resultEl.className = "badge high"; }
+    else if (score >= 35) { resultEl.textContent = "条件次第で可能"; resultEl.className = "badge mid"; }
+    else { resultEl.textContent = "観測困難"; resultEl.className = "badge low"; }
+}
+
+/* ===== 管理機能 ===== */
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
@@ -254,7 +251,6 @@ async function getLocation() {
         toggleLoading('card-loc', false);
     }, err => { alert("GPS取得失敗"); toggleLoading('card-loc', false); });
 }
-
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
     if (!city) return;
@@ -271,12 +267,10 @@ async function searchCity() {
     } catch (e) { alert("検索エラー"); }
     toggleLoading('card-loc', false);
 }
-
 function toggleLoading(id, isLoading) {
     const el = document.getElementById(id);
     if (el) isLoading ? el.classList.add('loading') : el.classList.remove('loading');
 }
-
 async function updateAll() {
     if (myLat === null) return;
     const cards = ['card-kp', 'card-kp3', 'card-oval', 'card-cloud', 'card-short'];
@@ -285,7 +279,6 @@ async function updateAll() {
     calculateTotal();
     cards.forEach(id => toggleLoading(id, false));
 }
-
 async function refreshItem(type) {
     if (myLat === null) return alert("先に位置を設定してください");
     toggleLoading(`card-${type}`, true);
@@ -297,17 +290,6 @@ async function refreshItem(type) {
     calculateTotal();
     toggleLoading(`card-${type}`, false);
 }
-
-function calculateTotal() {
-    const kp = parseFloat(document.getElementById("kp").textContent) || 0;
-    const cloud = parseInt(document.getElementById("cloud").textContent) || 100;
-    let score = (lastAuroraProb * 0.8) + (kp * 10) + (20 - cloud * 0.2);
-    const res = document.getElementById("result");
-    if (score >= 70) { res.textContent = "観測可能性 高"; res.className = "badge high"; }
-    else if (score >= 35) { res.textContent = "条件次第で可能"; res.className = "badge mid"; }
-    else { res.textContent = "観測困難"; res.className = "badge low"; }
-}
-
 async function reverseGeocode(lat, lon) {
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);

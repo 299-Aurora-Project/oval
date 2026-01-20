@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.0</title>
+<title>Aurora Forecast Pro v t1.0.1</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -30,7 +30,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <body>
 
 <div id="home-screen" class="container">
-    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.0</span></h1>
+    <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.1</span></h1>
 
     <div class="card" id="card-loc">
         <div>現在地</div>
@@ -211,18 +211,37 @@ async function getCloud() {
     } catch(e) { return 100; }
 }
 
+/* アレンジ：時間帯による動的判定 */
 async function shortForecast() {
-    const el = document.getElementById("forecast");
+    const forecastEl = document.getElementById("forecast");
     try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`);
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`;
+        const res = await fetch(url);
         const data = await res.json();
-        const hr = new Date().getHours();
-        let html = (hr >= 21 || hr < 4) 
-            ? `<div>🕒 3時間後: 雲量 ${data.hourly.cloudcover[3]}%</div>` 
-            : `<div>🌙 今夜 (21:00): 雲量 ${data.hourly.cloudcover[21]}%</div>`;
-        html += `<div>📅 明日夜 (21:00): 雲量 ${data.hourly.cloudcover[24 + 21]}%</div>`;
-        el.innerHTML = html;
-    } catch(e) { el.innerHTML = "エラー"; }
+
+        const now = new Date();
+        const currentHour = now.getHours();
+        let html = "";
+
+        // 1つ目の予測枠
+        if (currentHour >= 21 || currentHour < 4) {
+            // 夜間（21時〜深夜）の場合：3時間後の予報
+            const cloud3h = data.hourly.cloudcover[3]; 
+            html += `<div>🕒 3時間後: 雲量 ${cloud3h}%</div>`;
+        } else {
+            // 日中の場合：今夜21時の予報
+            const cloudTonight = data.hourly.cloudcover[21];
+            html += `<div>🌙 今夜 (21:00): 雲量 ${cloudTonight}%</div>`;
+        }
+
+        // 2つ目の予測枠（翌晩21時）
+        const cloudTomorrow = data.hourly.cloudcover[24 + 21];
+        html += `<div>📅 明日夜 (21:00): 雲量 ${cloudTomorrow}%</div>`;
+
+        forecastEl.innerHTML = html;
+    } catch(e) {
+        forecastEl.innerHTML = "予測取得エラー";
+    }
 }
 
 /* ===== 3. 全体管理 ===== */

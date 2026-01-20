@@ -85,7 +85,7 @@
 
         if (aurora && aurora.coordinates) {
             drawAurora(aurora);
-            statusEl.innerText = "● Boundary Locked & Synced";
+            statusEl.innerText = "● 12:49";
             statusEl.style.color = "#3fb950";
         }
     }
@@ -111,7 +111,7 @@
                     let finalLon = baseLon + offset;
                     
                     // 地図の境界 (-180 ~ 540) を一歩もはみ出さないようにガード
-                    if (finalLon >= -180 && finalLon <= 540) {
+                    if (finalLon >= -180 && finalLon <= 720) {
                         L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
                             color: color,
                             weight: 0,
@@ -129,3 +129,4 @@
 </script>
 </body>
 </html>
+

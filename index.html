@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Monitor - Strict Bounds</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
+        #dashboard { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+        #sidebar { padding: 20px; overflow-y: auto; border-right: 1px solid #30363d; background: #161b22; z-index: 1000; }
+        #map { width: 100%; height: 100%; background: #000; }
+        .stat-card { background: #0d1117; padding: 15px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #30363d; }
+        .stat-value { font-size: 1.6rem; font-weight: bold; color: #58a6ff; font-family: monospace; }
+        .stat-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+        .status-good { color: #3fb950; }
+        #status-msg { font-size: 0.8rem; margin-bottom: 15px; padding: 5px; border-radius: 4px; font-weight: bold; }
+        h2 { font-size: 1.2rem; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard">
+    <div id="sidebar">
+        <h2>Aurora Monitor</h2>
+        <div id="status-msg">Connecting...</div>
+        <div id="stats-container"></div>
+    </div>
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. 世界2枚分の境界を定義 (経度 -180~180 を 2枚分で -180~540 と定義)
+    // こうすることで「左に1枚、右に1枚」の状態を作ります。
+    const bounds = L.latLngBounds(
+        L.latLng(-85, -180), // 南西の角
+        L.latLng(85, 540)    // 北東の角 (180 + 360)
+    );
+
+    const map = L.map('map', {
+        maxBounds: bounds,
+        maxBoundsViscosity: 1.0, // 境界でピタッと止める
+        minZoom: 2,
+        maxZoom: 10,
+        worldCopyJump: false
+    }).setView([70, 180], 2); // 2枚の地図の継ぎ目（日付変更線あたり）を初期位置に
+
+    // タイル自体がループしないように設定
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB',
+        noWrap: true, // これでタイルの無限ループを停止
+        bounds: bounds
+    }).addTo(map);
+
+    let auroraLayer = L.layerGroup().addTo(map);
+
+    async function safeFetchJSON(url) {
+        try {
+            const response = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
+            if (!response.ok) return null;
+            return await response.json();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function updateDashboard() {
+        const statusEl = document.getElementById('status-msg');
+        const container = document.getElementById('stats-container');
+        statusEl.innerText = "Syncing with NOAA...";
+        statusEl.style.color = "yellow";
+
+        const mag = await safeFetchJSON('https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json');
+        const plasma = await safeFetchJSON('https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json');
+        const aurora = await safeFetchJSON('https://services.swpc.noaa.gov/json/ovation_aurora_latest.json');
+
+        let html = "";
+        if (mag && mag.length > 0) {
+            const val = mag[mag.length - 1];
+            html += `<div class="stat-card"><div class="stat-label">IMF Bz</div><div class="stat-value ${val[4] < 0 ? 'status-good' : ''}">${parseFloat(val[4]).toFixed(2)} nT</div></div>`;
+        }
+        if (plasma && plasma.length > 0) {
+            const val = plasma[plasma.length - 1];
+            html += `<div class="stat-card"><div class="stat-label">Wind Speed</div><div class="stat-value">${parseFloat(val[2]).toFixed(0)} km/s</div></div>`;
+            html += `<div class="stat-card"><div class="stat-label">Density</div><div class="stat-value">${parseFloat(val[1]).toFixed(1)} p/cm³</div></div>`;
+        }
+        container.innerHTML = html || "Waiting for data...";
+
+        if (aurora && aurora.coordinates) {
+            drawAurora(aurora);
+            statusEl.innerText = "● Strict Two-Panel Mode";
+            statusEl.style.color = "#3fb950";
+        }
+    }
+
+    function drawAurora(data) {
+        auroraLayer.clearLayers();
+        const coords = data.coordinates;
+        
+        coords.forEach(p => {
+            let lon = p[0];
+            const lat = p[1];
+            const prob = p[2];
+
+            if (prob > 10) { 
+                if (lon > 180) lon -= 360; // 一旦 -180 ~ 180 に正規化
+                let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
+                
+                // 2枚の地図それぞれに描画 (1枚目: lon, 2枚目: lon + 360)
+                [0, 360].forEach(offset => {
+                    L.rectangle([[lat, lon + offset], [lat + 2, lon + offset + 2]], {
+                        color: color,
+                        weight: 0,
+                        fillOpacity: prob / 100,
+                        interactive: false
+                    }).addTo(auroraLayer);
+                });
+            }
+        });
+    }
+
+    updateDashboard();
+    setInterval(updateDashboard, 300000);
+</script>
+</body>
+</html>

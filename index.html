@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Monitor - 3 Panel Sync</title>
+    <title>Aurora Monitor - Triple Panel Lock</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
@@ -31,25 +31,22 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. 世界3枚分の境界設定 (-180 から 900 まで)
-    // これにより右側にスクロールの余裕を持たせ、オーバルが切れるのを防ぎます
-    const bounds = L.latLngBounds(
-        L.latLng(-85, -180), 
-        L.latLng(85, 900)
-    );
+    // 1. スクロール制限の定義 (左に1枚分、右に2枚分まで許可)
+    const minLon = -360; // 左端
+    const maxLon = 720;  // 右端
+    const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon));
 
     const map = L.map('map', {
         maxBounds: bounds,
         maxBoundsViscosity: 1.0,
         minZoom: 2,
-        maxZoom: 10,
-        worldCopyJump: false
-    }).setView([70, 180], 2);
+        worldCopyJump: false // 独自のコピー描画を行うためOFF
+    }).setView([70, 0], 2);
 
+    // 2. タイルの設定 (noWrapをfalseにして、背景地図が無限に出るようにする)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; CartoDB',
-        noWrap: true, 
-        bounds: bounds
+        noWrap: false // ここをfalseにすることで背景地図が途切れません
     }).addTo(map);
 
     let auroraLayer = L.layerGroup().addTo(map);
@@ -86,7 +83,7 @@
 
         if (aurora && aurora.coordinates) {
             drawAurora(aurora);
-            statusEl.innerText = "● Triple Panel Mode Active";
+            statusEl.innerText = "● 12:56";
             statusEl.style.color = "#3fb950";
         }
     }
@@ -107,12 +104,12 @@
 
                 let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
                 
-                // 3枚の地図すべて（0, 360, 720のオフセット）に描画
-                [0, 360, 720].forEach(offset => {
+                // 許可したスクロール範囲（-360, 0, 360, 720）すべてに描画
+                [-360, 0, 360, 720].forEach(offset => {
                     let finalLon = baseLon + offset;
                     
-                    // 3枚分 ( -180 ~ 900 ) の範囲内であれば描画
-                    if (finalLon >= -180 && finalLon <= 900) {
+                    // スクロール可能な範囲内のみ描画
+                    if (finalLon >= minLon && finalLon <= maxLon) {
                         L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], {
                             color: color,
                             weight: 0,

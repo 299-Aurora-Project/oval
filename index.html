@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.15</title>
+<title>Aurora Forecast Pro v t1.0.16</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -22,12 +22,10 @@ h1 { margin: 0; font-size: 1.5rem; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 
-/* バッジスタイルの統一 */
 .badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.2rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-top: 5px; position: relative; }
 .badge-large { font-size: 1.5rem; }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
 
-/* 雲アイコン用スタイル */
 .cloud-icon { font-size: 0.8em; margin-left: 8px; vertical-align: middle; }
 
 input, button { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; }
@@ -36,6 +34,11 @@ button:hover { background: #5bc0be; color: #0b132b; }
 
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
+
+/* 最終更新日時のスタイル */
+.last-updated { font-size: 0.65rem; color: #8b949e; text-align: right; margin-top: 4px; font-family: monospace; }
+.refresh-btn + .last-updated { position: absolute; top: 40px; right: 15px; width: auto; }
+.sub-refresh-btn + .last-updated { position: absolute; top: 40px; right: 0; width: auto; }
 
 .loading { opacity: 0.6; pointer-events: none; filter: grayscale(0.5); }
 .loading::after { content: " ⌛"; }
@@ -75,7 +78,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.15</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.16</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -96,6 +99,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">View Details</button>
         </div>
         <button id="btn-update-all" class="refresh-btn" onclick="updateAll(); event.stopPropagation();">Update All</button>
+        <div id="time-update-all" class="last-updated"></div>
     </div>
 
     <button id="toggle-data-btn" class="toggle-btn" onclick="toggleData(); event.stopPropagation();">Show All Information</button>
@@ -107,17 +111,20 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin: 10px 0;"></div>
             <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">View Aurora Map</button>
             <button id="btn-refresh-oval" class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">Refresh</button>
+            <div id="time-oval" class="last-updated"></div>
         </div>
 
         <div class="card" id="card-kp-group">
             <div class="label-main">Kp Index (Current)</div>
             <div id="kp" class="badge low">--</div>
             <button id="btn-refresh-kp" class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
+            <div id="time-kp" class="last-updated"></div>
             <div class="sub-section" id="card-kp3">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="kp-short" class="value" style="font-size: 1rem;">--</div>
                 <pre id="kpForecast" style="margin-top:10px;">--</pre>
                 <button id="btn-refresh-kp3" class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">Refresh</button>
+                <div id="time-kp3" class="last-updated"></div>
             </div>
         </div>
 
@@ -125,10 +132,12 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <div class="label-main">Cloud Cover (Current)</div>
             <div id="cloud" class="badge low">--</div>
             <button id="btn-refresh-cloud" class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
+            <div id="time-cloud" class="last-updated"></div>
             <div class="sub-section" id="card-short">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="forecast" class="value" style="font-size: 1rem;">--</div>
                 <button id="btn-refresh-short" class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">Refresh</button>
+                <div id="time-short" class="last-updated"></div>
             </div>
         </div>
     </div>
@@ -140,7 +149,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>Optimized Logic (v t1.0.15):</strong>
+            <strong>Optimized Logic (v t1.0.16):</strong>
             <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
             <table class="detail-table">
                 <tr><th>Item</th><th>Max</th><th>Details</th></tr>
@@ -148,7 +157,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
                 <tr><td>Magnetic</td><td>40</td><td>Kp Index sensitivity adjusted</td></tr>
                 <tr><td>Sky</td><td>15</td><td>Clear sky impact</td></tr>
             </table>
-            <p style="margin-top:10px; color: #ffab70;">* Note: If cloud cover exceeds 70%, the score is significantly reduced. If it exceeds 85%, the result is forced to "Low" (Weather-Priority Logic).</p>
+            <p style="margin-top:10px; color: #ffab70;">* Note: If cloud cover exceeds 70%, the score is significantly reduced. If it exceeds 85%, the result is forced to "Low". When this weather-priority logic is active, a cloud icon (☁️) will appear next to the "Low" rating.</p>
         </div>
     </div>
 </div>
@@ -192,6 +201,14 @@ function toggleLoading(id, isLoading) {
     if (isLoading) { el.classList.add('loading'); } else { el.classList.remove('loading'); }
 }
 
+function updateTimestamp(id) {
+    const now = new Date();
+    const pad = (num) => String(num).padStart(2, '0');
+    const formatted = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const el = document.getElementById(id);
+    if (el) el.textContent = formatted;
+}
+
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
@@ -231,12 +248,14 @@ async function updateAll() {
 
     cards.forEach(id => toggleLoading(id, false));
     if(btn) btn.classList.remove('loading');
+    updateTimestamp('time-update-all');
 }
 
 async function refreshItem(type) {
     if (myLat === null) return alert("Please set your location first");
     const mapping = { kp: 'card-kp-group', kp3: 'card-kp3', oval: 'card-oval', cloud: 'card-cloud-group', short: 'card-short' };
     const btnMapping = { kp: 'btn-refresh-kp', kp3: 'btn-refresh-kp3', oval: 'btn-refresh-oval', cloud: 'btn-refresh-cloud', short: 'btn-refresh-short' };
+    const timeMapping = { kp: 'time-kp', kp3: 'time-kp3', oval: 'time-oval', cloud: 'time-cloud', short: 'time-short' };
     
     toggleLoading(mapping[type], true);
     const btn = document.getElementById(btnMapping[type]);
@@ -251,6 +270,7 @@ async function refreshItem(type) {
     calculateTotal();
     toggleLoading(mapping[type], false);
     if(btn) btn.classList.remove('loading');
+    updateTimestamp(timeMapping[type]);
 }
 
 function calculateTotal() {
@@ -271,19 +291,11 @@ function calculateTotal() {
     let baseScore = (ovalScore + kpScore + cloudScore) * (lastAuroraProb > 0 ? 1.0 : locationWeight);
     
     let isCloudCut = false;
-    // 雲による足切りロジック
-    if (evalCloud > 85) {
-        currentTotalScore = baseScore * 0.1; 
-        isCloudCut = true;
-    } else if (evalCloud > 70) {
-        currentTotalScore = baseScore * 0.4;
-        isCloudCut = true;
-    } else {
-        currentTotalScore = baseScore;
-    }
+    if (evalCloud > 85) { currentTotalScore = baseScore * 0.1; isCloudCut = true; } 
+    else if (evalCloud > 70) { currentTotalScore = baseScore * 0.4; isCloudCut = true; } 
+    else { currentTotalScore = baseScore; }
     currentTotalScore = Math.min(100, currentTotalScore);
 
-    // 雲アイコン表示判定
     const cloudTag = isCloudCut ? '<span class="cloud-icon">☁️</span>' : '';
 
     if (currentTotalScore >= 70 && evalCloud <= 85) { 
@@ -308,11 +320,12 @@ async function getKp() {
         if(val >= 5) el.className = "badge high";
         else if(val >= 3) el.className = "badge mid";
         else el.className = "badge low";
+        updateTimestamp('time-kp');
         return val; 
     } catch(e) { return 0; } 
 }
 
-async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); document.getElementById("kp-short").innerHTML = `<div>${(hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"}: Ref 3-day forecast</div>`; } catch(e) { } }
+async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); document.getElementById("kp-short").innerHTML = `<div>${(hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"}: Ref 3-day forecast</div>`; updateTimestamp('time-kp3'); } catch(e) { } }
 
 async function checkOval() { 
     try { 
@@ -330,6 +343,7 @@ async function checkOval() {
         const el = document.getElementById("oval");
         if(bestProb >= 10) { el.textContent = "Inside/Near Oval"; el.className = "badge high"; } 
         else { el.textContent = "Outside Oval"; el.className = "badge low"; }
+        updateTimestamp('time-oval');
     } catch(e) { } 
 }
 
@@ -341,15 +355,15 @@ async function getCloud() {
         const el = document.getElementById("cloud");
         el.textContent = val + "%"; 
         el.dataset.value = val;
-        // 雲のカラー分け (少ないほど良いので、少ない側を赤[high]にする)
         if(val <= 20) el.className = "badge high";
         else if(val <= 60) el.className = "badge mid";
         else el.className = "badge low";
+        updateTimestamp('time-cloud');
         return val; 
     } catch(e) { return 100; } 
 }
 
-async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; document.getElementById("forecast").innerHTML = html; } catch(e) { } }
+async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; document.getElementById("forecast").innerHTML = html; updateTimestamp('time-short'); } catch(e) { } }
 
 function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50); }
 function hideMapScreen() { document.getElementById('map-screen').style.display = 'none'; document.getElementById('home-screen').style.display = 'block'; }

@@ -6,7 +6,6 @@
 <title>Aurora Forecast Pro v t1.0.29</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-/* スタイル定義は維持 */
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
 .container { max-width:600px; margin: 0 auto; }
 .header-area { display: flex; flex-direction: column; margin-bottom: 10px; }
@@ -161,7 +160,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
                 </ul>
             </div>
             <strong>Optimized Logic (v t1.0.13+):</strong>
-            <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
+            <p>Balanced for mid-latitude observations.</p>
             <table class="detail-table">
                 <tr><th>Item</th><th>Max</th><th>Details</th></tr>
                 <tr><td>Oval/Horizon</td><td>45</td><td>Base prob + Viewline bonus</td></tr>
@@ -212,6 +211,8 @@ function toggleData() {
 function handleCityInput(el) {
     const val = el.value.trim();
     document.getElementById("btn-search").disabled = val.length === 0;
+    // [DISABLED] 入力開始時にエラーをリセットする処理を停止
+    // document.getElementById("search-error").style.opacity = "0";
     clearTimeout(searchTimer);
     if (val.length < 2) { closeAllLists(); return; }
     searchTimer = setTimeout(async () => {
@@ -275,6 +276,8 @@ async function getLocation() {
 
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
+    // [DISABLED] 都市検索開始時にエラー表示をリセットする処理を停止
+    // const errorEl = document.getElementById("search-error"); if(errorEl) errorEl.style.opacity = "0";
     setItemLoading('loc', true);
     document.getElementById('btn-search').classList.add('loading-btn');
     try {
@@ -284,7 +287,11 @@ async function searchCity() {
             const res0 = data.results[0]; myLat = res0.latitude; myLon = res0.longitude;
             document.getElementById("loc").textContent = `${res0.name}, ${res0.country}`;
             updateAll();
-        } else { document.getElementById('loc').textContent = "Not Set"; }
+        } else { 
+            document.getElementById('loc').textContent = "Not Set"; 
+            // [DISABLED] 検索失敗時のエラーメッセージ表示を停止
+            /* if(errorEl) errorEl.style.opacity = "1"; */ 
+        }
     } catch (e) { alert("Search Error"); }
     document.getElementById('btn-search').classList.remove('loading-btn');
 }

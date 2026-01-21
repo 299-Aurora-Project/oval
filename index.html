@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.14</title>
+<title>Aurora Forecast Pro v t1.0.15</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -23,9 +23,12 @@ h1 { margin: 0; font-size: 1.5rem; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 
 /* バッジスタイルの統一 */
-.badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.2rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-top: 5px; }
+.badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.2rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-top: 5px; position: relative; }
 .badge-large { font-size: 1.5rem; }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
+
+/* 雲アイコン用スタイル */
+.cloud-icon { font-size: 0.8em; margin-left: 8px; vertical-align: middle; }
 
 input, button { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; }
 button { cursor: pointer; background: #3a506b; color: white; transition: 0.2s; font-size: 0.9rem; }
@@ -72,7 +75,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.14</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.15</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -120,7 +123,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
         <div class="card" id="card-cloud-group">
             <div class="label-main">Cloud Cover (Current)</div>
-            <div id="cloud" class="value">--</div>
+            <div id="cloud" class="badge low">--</div>
             <button id="btn-refresh-cloud" class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
             <div class="sub-section" id="card-short">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
@@ -137,7 +140,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>Optimized Logic (v t1.0.14):</strong>
+            <strong>Optimized Logic (v t1.0.15):</strong>
             <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
             <table class="detail-table">
                 <tr><th>Item</th><th>Max</th><th>Details</th></tr>
@@ -257,7 +260,7 @@ function calculateTotal() {
     document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
     
     let evalKp = parseFloat(document.getElementById("kp").dataset.value) || 0;
-    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 0);
+    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").dataset.value) || 0);
     
     let ovalScore = (lastAuroraProb * 1.2) + (lastAuroraProb === 0 ? 5 : 10);
     ovalScore = Math.min(45, ovalScore);
@@ -267,19 +270,29 @@ function calculateTotal() {
     let locationWeight = lastAuroraProb === 0 ? (evalKp >= 4 ? 0.3 : 0) : Math.min(1.0, 0.6 + (lastAuroraProb / 30));
     let baseScore = (ovalScore + kpScore + cloudScore) * (lastAuroraProb > 0 ? 1.0 : locationWeight);
     
-    // 雲による足切りロジック (v t1.0.13以降)
+    let isCloudCut = false;
+    // 雲による足切りロジック
     if (evalCloud > 85) {
         currentTotalScore = baseScore * 0.1; 
+        isCloudCut = true;
     } else if (evalCloud > 70) {
         currentTotalScore = baseScore * 0.4;
+        isCloudCut = true;
     } else {
         currentTotalScore = baseScore;
     }
     currentTotalScore = Math.min(100, currentTotalScore);
 
-    if (currentTotalScore >= 70 && evalCloud <= 85) { resultEl.textContent = "High"; resultEl.className = "badge badge-large high"; }
-    else if (currentTotalScore >= 35 && evalCloud <= 85) { resultEl.textContent = "Possible"; resultEl.className = "badge badge-large mid"; }
-    else { resultEl.textContent = "Low"; resultEl.className = "badge badge-large low"; }
+    // 雲アイコン表示判定
+    const cloudTag = isCloudCut ? '<span class="cloud-icon">☁️</span>' : '';
+
+    if (currentTotalScore >= 70 && evalCloud <= 85) { 
+        resultEl.innerHTML = "High"; resultEl.className = "badge badge-large high"; 
+    } else if (currentTotalScore >= 35 && evalCloud <= 85) { 
+        resultEl.innerHTML = "Possible"; resultEl.className = "badge badge-large mid"; 
+    } else { 
+        resultEl.innerHTML = `Low${cloudTag}`; resultEl.className = "badge badge-large low"; 
+    }
 }
 
 async function reverseGeocode(lat, lon) { try { const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`); const data = await res.json(); document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country; } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); } }
@@ -292,7 +305,6 @@ async function getKp() {
         const el = document.getElementById("kp");
         el.textContent = val.toFixed(1); 
         el.dataset.value = val;
-        // Kpのカラー分け
         if(val >= 5) el.className = "badge high";
         else if(val >= 3) el.className = "badge mid";
         else el.className = "badge low";
@@ -316,18 +328,27 @@ async function checkOval() {
         lastAuroraProb = bestProb; 
         document.getElementById("oval-prob").textContent = `Probability at your location: ${bestProb}%`; 
         const el = document.getElementById("oval");
-        // Ovalのカラー分け (指示通り: グレー[low] または 赤[high])
-        if(bestProb >= 10) {
-            el.textContent = "Inside/Near Oval";
-            el.className = "badge high";
-        } else {
-            el.textContent = "Outside Oval";
-            el.className = "badge low";
-        }
+        if(bestProb >= 10) { el.textContent = "Inside/Near Oval"; el.className = "badge high"; } 
+        else { el.textContent = "Outside Oval"; el.className = "badge low"; }
     } catch(e) { } 
 }
 
-async function getCloud() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`); const data = await res.json(); document.getElementById("cloud").textContent = data.current.cloudcover + "%"; return data.current.cloudcover; } catch(e) { return 100; } }
+async function getCloud() { 
+    try { 
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`); 
+        const data = await res.json(); 
+        const val = data.current.cloudcover;
+        const el = document.getElementById("cloud");
+        el.textContent = val + "%"; 
+        el.dataset.value = val;
+        // 雲のカラー分け (少ないほど良いので、少ない側を赤[high]にする)
+        if(val <= 20) el.className = "badge high";
+        else if(val <= 60) el.className = "badge mid";
+        else el.className = "badge low";
+        return val; 
+    } catch(e) { return 100; } 
+}
+
 async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; document.getElementById("forecast").innerHTML = html; } catch(e) { } }
 
 function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50); }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.20</title>
+<title>Aurora Forecast Pro v t1.0.21</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -47,7 +47,7 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
 .refresh-btn + .last-updated { position: absolute; top: 40px; right: 15px; width: auto; }
 .sub-refresh-btn + .last-updated { position: absolute; top: 40px; right: 0; width: auto; }
 
-.error-msg { color: #ff6b6b; font-size: 0.75rem; margin-top: 5px; display: none; display: block; min-height: 1em; opacity: 0; transition: 0.3s; }
+.error-msg { color: #ff6b6b; font-size: 0.75rem; margin-top: 5px; min-height: 1em; opacity: 0; transition: 0.3s; }
 
 .loading-text { opacity: 0.6; font-size: 1rem; color: #8b949e; font-style: normal; }
 .loading-text i { font-style: italic; }
@@ -76,7 +76,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 #back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; border: 1px solid #30363d; color: white; padding: 8px 16px; }
 </style>
 </head>
-<body onkeydown="closeWelcome()" onclick="closeWelcome()" onclick="closeAllLists()">
+<body onkeydown="closeWelcome()" onclick="closeWelcome(); closeAllLists();">
 
 <div id="welcome-overlay">
     <div class="arrow-container">
@@ -88,7 +88,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.20</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.21</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -210,7 +210,6 @@ function toggleData() {
     btn.textContent = isHidden ? "Show Less Information" : "Show All Information";
 }
 
-// 都市検索候補の表示ロジック
 function handleCityInput(el) {
     const val = el.value.trim();
     document.getElementById("btn-search").disabled = val.length === 0;
@@ -236,7 +235,8 @@ function showAutocomplete(results) {
         const item = document.createElement("div");
         item.className = "autocomplete-item";
         item.innerHTML = `<strong>${res.name}</strong>, ${res.admin1 || ''} ${res.country}`;
-        item.onclick = () => {
+        item.onclick = (e) => {
+            e.stopPropagation();
             document.getElementById("cityInput").value = res.name;
             myLat = res.latitude; myLon = res.longitude;
             document.getElementById("loc").textContent = `${res.name}, ${res.country}`;
@@ -251,6 +251,13 @@ function closeAllLists() {
     const list = document.getElementById("autocomplete-list");
     if(list) list.innerHTML = "";
 }
+
+function openModal() {
+    if (myLat === null) { alert("Please set your location first"); return; }
+    document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
+    document.getElementById("detailModal").style.display = "flex";
+}
+function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
 function setItemLoading(id, isLoading) {
     const el = document.getElementById(id);
@@ -446,7 +453,7 @@ function showMapScreen() {
     document.getElementById('map-screen').style.display = 'block'; 
     if (!map) initMap(); 
     else {
-        updateMapMarker(); // 地図表示時に最新の位置にピンを移動
+        updateMapMarker(); 
         setTimeout(() => { map.invalidateSize(); }, 50); 
     }
     window.scrollTo(0,0);

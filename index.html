@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.29</title>
+<title>Aurora Forecast Pro v t1.0.30</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
+/* スタイル定義 */
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
 .container { max-width:600px; margin: 0 auto; }
 .header-area { display: flex; flex-direction: column; margin-bottom: 10px; }
@@ -73,7 +74,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.29</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.30</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -88,7 +89,8 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <button id="btn-search" onclick="searchCity(); event.stopPropagation();" disabled>Set</button>
             <div id="autocomplete-list" class="autocomplete-items"></div>
         </div>
-        </div>
+        <div id="search-error" class="error-msg">City not found. Please check your input.</div>
+    </div>
 
     <div class="card" id="card-main-result">
         <div id="total-label" class="label-main">Overall Probability</div>
@@ -160,14 +162,13 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
                 </ul>
             </div>
             <strong>Optimized Logic (v t1.0.13+):</strong>
-            <p>Balanced for mid-latitude observations.</p>
             <table class="detail-table">
                 <tr><th>Item</th><th>Max</th><th>Details</th></tr>
                 <tr><td>Oval/Horizon</td><td>45</td><td>Base prob + Viewline bonus</td></tr>
                 <tr><td>Magnetic</td><td>40</td><td>Kp Index sensitivity adjusted</td></tr>
                 <tr><td>Sky</td><td>15</td><td>Clear sky impact</td></tr>
             </table>
-            <p style="margin-top:10px; color: #ffab70;">* Note: If cloud cover exceeds 70%, the score is significantly reduced. If it exceeds 85%, the result is forced to "Low". When this weather-priority logic is active, a cloud icon (☁️) will appear next to the "Low" rating.</p>
+            <p style="margin-top:10px; color: #ffab70;">* Note: If cloud cover exceeds 70%, the score is significantly reduced. If it exceeds 85%, the result is forced to "Low".</p>
         </div>
     </div>
 </div>
@@ -211,8 +212,8 @@ function toggleData() {
 function handleCityInput(el) {
     const val = el.value.trim();
     document.getElementById("btn-search").disabled = val.length === 0;
-    // [DISABLED] 入力開始時にエラーをリセットする処理を停止
-    // document.getElementById("search-error").style.opacity = "0";
+    // エラーメッセージのリセット処理を復元
+    document.getElementById("search-error").style.opacity = "0";
     clearTimeout(searchTimer);
     if (val.length < 2) { closeAllLists(); return; }
     searchTimer = setTimeout(async () => {
@@ -276,8 +277,9 @@ async function getLocation() {
 
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
-    // [DISABLED] 都市検索開始時にエラー表示をリセットする処理を停止
-    // const errorEl = document.getElementById("search-error"); if(errorEl) errorEl.style.opacity = "0";
+    const errorEl = document.getElementById("search-error"); 
+    if(errorEl) errorEl.style.opacity = "0"; // リセット
+
     setItemLoading('loc', true);
     document.getElementById('btn-search').classList.add('loading-btn');
     try {
@@ -289,8 +291,7 @@ async function searchCity() {
             updateAll();
         } else { 
             document.getElementById('loc').textContent = "Not Set"; 
-            // [DISABLED] 検索失敗時のエラーメッセージ表示を停止
-            /* if(errorEl) errorEl.style.opacity = "1"; */ 
+            if(errorEl) errorEl.style.opacity = "1"; // エラーメッセージを表示
         }
     } catch (e) { alert("Search Error"); }
     document.getElementById('btn-search').classList.remove('loading-btn');

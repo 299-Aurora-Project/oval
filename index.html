@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.19</title>
+<title>Aurora Forecast Pro v t1.0.20</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -34,6 +34,12 @@ button { cursor: pointer; background: #3a506b; color: white; transition: 0.2s; f
 button:hover:not(:disabled) { background: #5bc0be; color: #0b132b; }
 button:disabled { opacity: 0.3; cursor: not-allowed; }
 
+.search-container { position: relative; display: inline-block; width: 100%; }
+#cityInput { width: calc(100% - 100px); box-sizing: border-box; }
+.autocomplete-items { position: absolute; border: 1px solid #3a506b; border-bottom: none; border-top: none; z-index: 99; top: 100%; left: 0; right: 100px; background-color: #1c2541; border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; }
+.autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #30363d; font-size: 0.85rem; }
+.autocomplete-item:hover { background-color: #3a506b; color: #5bc0be; }
+
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
 
@@ -41,7 +47,7 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
 .refresh-btn + .last-updated { position: absolute; top: 40px; right: 15px; width: auto; }
 .sub-refresh-btn + .last-updated { position: absolute; top: 40px; right: 0; width: auto; }
 
-.error-msg { color: #ff6b6b; font-size: 0.75rem; margin-left: 10px; display: none; }
+.error-msg { color: #ff6b6b; font-size: 0.75rem; margin-top: 5px; display: none; display: block; min-height: 1em; opacity: 0; transition: 0.3s; }
 
 .loading-text { opacity: 0.6; font-size: 1rem; color: #8b949e; font-style: normal; }
 .loading-text i { font-style: italic; }
@@ -70,7 +76,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 #back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; border: 1px solid #30363d; color: white; padding: 8px 16px; }
 </style>
 </head>
-<body onkeydown="closeWelcome()" onclick="closeWelcome()">
+<body onkeydown="closeWelcome()" onclick="closeWelcome()" onclick="closeAllLists()">
 
 <div id="welcome-overlay">
     <div class="arrow-container">
@@ -82,7 +88,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.19</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.20</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -92,9 +98,12 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div id="loc" class="value">Not Set</div>
         <button id="btn-gps" onclick="getLocation(); event.stopPropagation();">Get via GPS</button><br>
         Search City:
-        <input id="cityInput" placeholder="e.g. Fairbanks, AK" oninput="toggleSetButton()" onclick="event.stopPropagation()">
-        <button id="btn-search" onclick="searchCity(); event.stopPropagation();" disabled>Set</button>
-        <span id="search-error" class="error-msg">都市が見つかりませんでした。入力を確認してください。</span>
+        <div class="search-container">
+            <input id="cityInput" placeholder="e.g. Fairbanks, AK" oninput="handleCityInput(this)" onclick="event.stopPropagation()">
+            <button id="btn-search" onclick="searchCity(); event.stopPropagation();" disabled>Set</button>
+            <div id="autocomplete-list" class="autocomplete-items"></div>
+        </div>
+        <div id="search-error" class="error-msg">City not found. Please check your input.</div>
     </div>
 
     <div class="card" id="card-main-result">
@@ -184,11 +193,11 @@ const OVAL_URL = "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json
 const FORECAST_URL = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";
 
 let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData = null;
-let map = null; let auroraLayer = null; let cloudDataHourly = null;
+let map = null; let auroraLayer = null; let userMarker = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 let lastScrollPos = 0;
+let searchTimer = null;
 
-// 自動更新タイマー (15分 = 900,000ms)
 setInterval(() => { if (myLat !== null) updateAll(); }, 900000);
 
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
@@ -201,18 +210,47 @@ function toggleData() {
     btn.textContent = isHidden ? "Show Less Information" : "Show All Information";
 }
 
-function toggleSetButton() {
-    const input = document.getElementById("cityInput");
-    document.getElementById("btn-search").disabled = input.value.trim().length === 0;
-    document.getElementById("search-error").style.display = "none";
+// 都市検索候補の表示ロジック
+function handleCityInput(el) {
+    const val = el.value.trim();
+    document.getElementById("btn-search").disabled = val.length === 0;
+    document.getElementById("search-error").style.opacity = "0";
+    
+    clearTimeout(searchTimer);
+    if (val.length < 2) { closeAllLists(); return; }
+    
+    searchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(val)}&count=5&language=en`);
+            const data = await res.json();
+            showAutocomplete(data.results);
+        } catch (e) {}
+    }, 300);
 }
 
-function openModal() {
-    if (myLat === null) return alert("Please set your location first");
-    document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
-    document.getElementById("detailModal").style.display = "flex";
+function showAutocomplete(results) {
+    closeAllLists();
+    if (!results) return;
+    const list = document.getElementById("autocomplete-list");
+    results.forEach(res => {
+        const item = document.createElement("div");
+        item.className = "autocomplete-item";
+        item.innerHTML = `<strong>${res.name}</strong>, ${res.admin1 || ''} ${res.country}`;
+        item.onclick = () => {
+            document.getElementById("cityInput").value = res.name;
+            myLat = res.latitude; myLon = res.longitude;
+            document.getElementById("loc").textContent = `${res.name}, ${res.country}`;
+            closeAllLists();
+            updateAll();
+        };
+        list.appendChild(item);
+    });
 }
-function closeModal() { document.getElementById("detailModal").style.display = "none"; }
+
+function closeAllLists() {
+    const list = document.getElementById("autocomplete-list");
+    if(list) list.innerHTML = "";
+}
 
 function setItemLoading(id, isLoading) {
     const el = document.getElementById(id);
@@ -249,7 +287,7 @@ async function getLocation() {
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
     const errorEl = document.getElementById("search-error");
-    errorEl.style.display = "none";
+    errorEl.style.opacity = "0";
     
     setItemLoading('loc', true);
     document.getElementById('btn-search').classList.add('loading-btn');
@@ -263,7 +301,7 @@ async function searchCity() {
             updateAll();
         } else {
             document.getElementById('loc').textContent = "Not Set";
-            errorEl.style.display = "inline";
+            errorEl.style.opacity = "1";
         }
     } catch (e) { alert("Search Error"); }
     document.getElementById('btn-search').classList.remove('loading-btn');
@@ -407,7 +445,10 @@ function showMapScreen() {
     document.getElementById('home-screen').style.display = 'none'; 
     document.getElementById('map-screen').style.display = 'block'; 
     if (!map) initMap(); 
-    else setTimeout(() => { map.invalidateSize(); }, 50); 
+    else {
+        updateMapMarker(); // 地図表示時に最新の位置にピンを移動
+        setTimeout(() => { map.invalidateSize(); }, 50); 
+    }
     window.scrollTo(0,0);
 }
 
@@ -417,7 +458,21 @@ function hideMapScreen() {
     window.scrollTo(0, lastScrollPos);
 }
 
-function initMap() { map = L.map('map', { maxBounds: L.latLngBounds(L.latLng(-85, -360), L.latLng(85, 720)), maxBoundsViscosity: 1.0, minZoom: 2 }).setView([myLat || 70, myLon || 0], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map); auroraLayer = L.layerGroup().addTo(map); if (cachedAuroraData) drawAurora(cachedAuroraData); if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6 }).addTo(map); }
+function updateMapMarker() {
+    if (!map || myLat === null) return;
+    if (userMarker) userMarker.setLatLng([myLat, myLon]);
+    else userMarker = L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, weight: 2, fillOpacity: 0.8 }).addTo(map);
+    map.setView([myLat, myLon], map.getZoom());
+}
+
+function initMap() { 
+    map = L.map('map', { maxBounds: L.latLngBounds(L.latLng(-85, -360), L.latLng(85, 720)), maxBoundsViscosity: 1.0, minZoom: 2 }).setView([myLat || 70, myLon || 0], 3); 
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map); 
+    auroraLayer = L.layerGroup().addTo(map); 
+    if (cachedAuroraData) drawAurora(cachedAuroraData); 
+    updateMapMarker(); 
+}
+
 function drawAurora(data) { auroraLayer.clearLayers(); data.coordinates.forEach(p => { if (p[2] > 10) { let baseLon = p[0] > 180 ? p[0] - 360 : p[0]; let color = p[2] > 50 ? '#ff4500' : (p[2] > 25 ? '#ffff00' : '#00ff00'); [-360, 0, 360].forEach(offset => { L.rectangle([[p[1], baseLon + offset], [p[1] + 2, baseLon + offset + 2]], { color: color, weight: 0, fillOpacity: p[2] / 100, interactive: false }).addTo(auroraLayer); }); } }); }
 </script>
 </body>

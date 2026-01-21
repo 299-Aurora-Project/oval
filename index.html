@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.24</title>
+<title>Aurora Forecast Pro v t1.0.25</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 /* スタイル定義は維持 */
@@ -68,13 +68,13 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     <div class="arrow-container">
         <div class="thin-arrow">↑</div><div class="thin-arrow">↑</div><div class="thin-arrow">↑</div>
     </div>
-    <div class="welcome-box">Please enter your location first</div>
+    <div class="welcome-box">Please enter a location first</div>
 </div>
 
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.24</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.25</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -151,7 +151,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     <div class="modal-content" onclick="event.stopPropagation()">
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <div class="modal-title" id="modal-label-title">Probability Details</div>
-        <div class="score-big"><span id="score-pct">--</span>%</div>
+        <div class="score-big"><span id="score-pct">--</span></div>
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
             <strong>Optimized Logic (v t1.0.13+):</strong>
             <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
@@ -183,6 +183,13 @@ let map = null; let auroraLayer = null; let userMarker = null; let cloudDataHour
 let currentTotalScore = 0;
 let lastScrollPos = 0;
 let searchTimer = null;
+
+function formatProbability(score) {
+    const rounded = Math.round(score);
+    if (rounded <= 0) return "< 1 %";
+    if (rounded >= 100) return "> 99 %";
+    return rounded + " %";
+}
 
 setInterval(() => { if (myLat !== null) updateAll(); }, 900000);
 
@@ -232,8 +239,8 @@ function showAutocomplete(results) {
 function closeAllLists() { const list = document.getElementById("autocomplete-list"); if(list) list.innerHTML = ""; }
 
 function openModal() {
-    if (myLat === null) { alert("Please set your location first"); return; }
-    document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
+    if (myLat === null) { alert("Please set a location first"); return; }
+    document.getElementById("score-pct").textContent = formatProbability(currentTotalScore);
     document.getElementById("detailModal").style.display = "flex";
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
@@ -288,7 +295,7 @@ async function updateAll() {
 }
 
 async function refreshItem(type) {
-    if (myLat === null) return alert("Please set your location first");
+    if (myLat === null) return alert("Please set a location first");
     const btnMapping = { kp: 'btn-refresh-kp', kp3: 'btn-refresh-kp3', oval: 'btn-refresh-oval', cloud: 'btn-refresh-cloud', short: 'btn-refresh-short' };
     const loadMapping = { kp: 'kp', kp3: 'kp-short', oval: 'oval', cloud: 'cloud', short: 'forecast' };
     const timeMapping = { kp: 'time-kp', kp3: 'time-kp3', oval: 'time-oval', cloud: 'time-cloud', short: 'time-short' };

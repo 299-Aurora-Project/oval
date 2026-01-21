@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.13</title>
+<title>Aurora Forecast Pro v t1.0.12</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -13,47 +13,58 @@ body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; pa
 .version { font-size: 0.4em; vertical-align: middle; color: #5bc0be; margin-left: 8px; font-weight: normal; }
 
 .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+/* タイトル横の(beta)を小さく表示 */
 .beta-suffix { font-size: 0.6em; color: #8b949e; font-weight: normal; margin-left: 5px; text-transform: lowercase; }
 
 h1 { margin: 0; font-size: 1.5rem; }
 
-.card { background:#1c2541; padding:20px; border-radius:12px; margin-bottom:20px; position: relative; border: 1px solid #30363d; transition: opacity 0.3s; }
+.card { background:#1c2541; padding:20px; border-radius:12px; margin-bottom:20px; position: relative; border: 1px solid #30363d; }
 .label-main { font-size: 1.1rem; font-weight: bold; color: #5bc0be; margin-bottom: 10px; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 .badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.5rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
 
-input { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; background: #0b132b; color: white; border: 1px solid #3a506b; }
-button { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; background: #3a506b; color: white; transition: background 0.2s, color 0.2s; font-size: 0.9rem; }
+input, button { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; }
+button { cursor: pointer; background: #3a506b; color: white; transition: 0.2s; font-size: 0.9rem; }
 button:hover { background: #5bc0be; color: #0b132b; }
 
-/* 更新中の明示的なスタイル */
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
 
-.loading-btn { background: #5bc0be !important; color: #0b132b !important; opacity: 0.7; pointer-events: none; }
-.loading-card { opacity: 0.5; pointer-events: none; }
+/* ローディング時のスタイル修正: 色の変化が元に戻るように設定 */
+.loading { opacity: 0.6; pointer-events: none; filter: grayscale(0.5); }
+.loading::after { content: " ⌛"; }
 
 #hidden-data { display: none; }
 .toggle-btn { width: 100%; margin-bottom: 20px; background: #1c2541; border: 1px solid #3a506b; color: #5bc0be; }
 
 pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospace; font-size: 0.85em; overflow-x: auto; white-space: pre-wrap; border: 1px solid #3a506b; min-height: 50px; }
 
-#welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
-.welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+#welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
+.welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; z-index: 30001; }
+.arrow-container { display: flex; gap: 15px; margin-bottom: 10px; }
+.thin-arrow { font-size: 2.5rem; color: #5bc0be; font-weight: 100; animation: bounceThin 1.2s infinite; }
+@keyframes bounceThin { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-15px); opacity: 1; } }
 
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; cursor: pointer; }
-.modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; }
+.modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; cursor: default; }
+.close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
+.score-big { font-size: 2.5rem; text-align: center; color: #fff; margin: 10px 0; font-weight: bold; }
+.detail-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; margin-top: 10px; }
+.detail-table th, .detail-table td { text-align: left; padding: 8px; border-bottom: 1px solid #30363d; }
 
 #map-screen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; }
-#map { width: 100%; height: 100%; }
-#back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; color: white; padding: 8px 16px; border-radius: 4px; }
+#map { width: 100%; height: 100%; background: #000; }
+#back-btn { position: absolute; top: 90px; left: 10px; z-index: 10000; background: #21262d; border: 1px solid #30363d; color: white; padding: 8px 16px; }
 </style>
 </head>
 <body onkeydown="closeWelcome()" onclick="closeWelcome()">
 
 <div id="welcome-overlay">
+    <div class="arrow-container">
+        <div class="thin-arrow">↑</div><div class="thin-arrow">↑</div><div class="thin-arrow">↑</div>
+    </div>
     <div class="welcome-box">Please enter your location first</div>
 </div>
 
@@ -123,17 +134,24 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 <div id="detailModal" class="modal-overlay" onclick="closeModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>Cloud-Aware Logic (v t1.0.12):</strong>
-            <p>If cloud cover exceeds 85%, visibility is forced to "Low" as the sky is blocked.</p>
+            <strong>Optimized Logic (v t1.0.12):</strong>
+            <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
+            <table class="detail-table">
+                <tr><th>Item</th><th>Max</th><th>Details</th></tr>
+                <tr><td>Oval/Horizon</td><td>45</td><td>Base prob + Viewline bonus</td></tr>
+                <tr><td>Magnetic</td><td>40</td><td>Kp Index sensitivity adjusted</td></tr>
+                <tr><td>Sky</td><td>15</td><td>Clear sky impact</td></tr>
+            </table>
         </div>
-        <button onclick="closeModal()" style="width:100%">Close</button>
     </div>
 </div>
 
 <div id="map-screen">
-    <button id="back-btn" onclick="hideMapScreen();">← Back</button>
+    <button class="btn" id="back-btn" onclick="hideMapScreen();">← Back</button>
     <div id="map"></div>
 </div>
 
@@ -144,10 +162,13 @@ const KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.j
 const OVAL_URL = "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json";
 const FORECAST_URL = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";
 
-let myLat = null; let myLon = null; let lastAuroraProb = 0; let cloudDataHourly = null;
-let currentTotalScore = 0; let map = null; let auroraLayer = null;
+let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData = null;
+let map = null; let auroraLayer = null; let cloudDataHourly = null;
+let currentTotalScore = 0;
 
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
+
+// ラベルを "Show Less Information" に修正
 function toggleData() {
     const hiddenSection = document.getElementById("hidden-data");
     const btn = document.getElementById("toggle-data-btn");
@@ -155,115 +176,116 @@ function toggleData() {
     hiddenSection.style.display = isHidden ? "block" : "none";
     btn.textContent = isHidden ? "Show Less Information" : "Show All Information";
 }
+
 function openModal() {
-    if (myLat === null) return;
+    if (myLat === null) return alert("Please set your location first");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
     document.getElementById("detailModal").style.display = "flex";
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-/* 更新ボタンのステート制御（強制リセット付き） */
-function setUIState(isLoading) {
-    const btns = document.querySelectorAll('button');
-    const cards = document.querySelectorAll('.card');
-    btns.forEach(b => {
-        if(isLoading) b.classList.add('loading-btn');
-        else {
-            b.classList.remove('loading-btn');
-            b.style.background = ""; // インラインスタイルをクリアしてCSS定義に戻す
-            b.style.color = "";
-        }
-    });
-    cards.forEach(c => isLoading ? c.classList.add('loading-card') : c.classList.remove('loading-card'));
+/* ローディング表示管理 (ボタンの状態を確実に復元する) */
+function toggleLoading(id, isLoading) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isLoading) {
+        el.classList.add('loading');
+        // ボタン自体の色を固定化させないよう、クラス制御に留める
+    } else {
+        el.classList.remove('loading');
+    }
 }
 
 async function getLocation() {
-    setUIState(true);
+    toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
         myLat = p.coords.latitude; myLon = p.coords.longitude;
         await reverseGeocode(myLat, myLon);
-        await updateAll();
-    }, err => { alert("GPS Failed"); setUIState(false); });
+        updateAll();
+        toggleLoading('card-loc', false);
+    }, err => { alert("GPS Fetch Failed"); toggleLoading('card-loc', false); });
 }
 
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
     if (!city) return;
-    setUIState(true);
+    toggleLoading('card-loc', true);
     try {
         const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en`);
         const data = await res.json();
-        if (data.results) {
-            myLat = data.results[0].latitude; myLon = data.results[0].longitude;
-            document.getElementById("loc").textContent = data.results[0].name;
-            await updateAll();
+        if (data.results && data.results.length > 0) {
+            const res0 = data.results[0];
+            myLat = res0.latitude; myLon = res0.longitude;
+            document.getElementById("loc").textContent = `${res0.name}, ${res0.country}`;
+            updateAll();
         }
-    } catch (e) { alert("Error"); }
-    setUIState(false);
+    } catch (e) { alert("Search Error"); }
+    toggleLoading('card-loc', false);
 }
 
 async function updateAll() {
     if (myLat === null) return;
-    setUIState(true);
+    const btn = document.getElementById('btn-update-all');
+    const cards = ['card-kp-group', 'card-cloud-group', 'card-oval', 'card-main-result'];
+    cards.forEach(id => toggleLoading(id, true));
+    if(btn) btn.classList.add('loading');
+
     await Promise.all([getKp(), fetchKp3DayForecast(), checkOval(), getCloud(), shortForecast()]);
     calculateTotal();
-    setUIState(false);
+
+    cards.forEach(id => toggleLoading(id, false));
+    if(btn) btn.classList.remove('loading');
 }
 
 async function refreshItem(type) {
-    if (myLat === null) return;
-    setUIState(true);
+    if (myLat === null) return alert("Please set your location first");
+    const mapping = { kp: 'card-kp-group', kp3: 'card-kp3', oval: 'card-oval', cloud: 'card-cloud-group', short: 'card-short' };
+    const btnMapping = { kp: 'btn-refresh-kp', kp3: 'btn-refresh-kp3', oval: 'btn-refresh-oval', cloud: 'btn-refresh-cloud', short: 'btn-refresh-short' };
+    
+    toggleLoading(mapping[type], true);
+    const btn = document.getElementById(btnMapping[type]);
+    if(btn) btn.classList.add('loading');
+
     if (type === 'kp') await getKp();
     if (type === 'kp3') await fetchKp3DayForecast();
     if (type === 'oval') await checkOval();
     if (type === 'cloud') await getCloud();
     if (type === 'short') await shortForecast();
+    
     calculateTotal();
-    setUIState(false);
+    toggleLoading(mapping[type], false);
+    if(btn) btn.classList.remove('loading');
 }
 
-/* スコア計算ロジック（雲のペナルティを大幅強化） */
+/* 以下のロジックは v1.0.12 基準を維持 */
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
     let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "Now" : "21:00";
     document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
-
     let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
-    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 0);
-
-    // 基盤スコア
+    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 100);
     let ovalScore = (lastAuroraProb * 1.2) + (lastAuroraProb === 0 ? 5 : 10);
+    ovalScore = Math.min(45, ovalScore);
     let kpScore = Math.min(40, evalKp * 12 + (evalKp >= 3 ? 5 : 0));
-    let baseScore = (ovalScore + kpScore);
-
-    // 雲による減衰倍率 (0.0 to 1.0)
-    let cloudMultiplier = 1.0;
-    if (evalCloud > 85) cloudMultiplier = 0.1; // ほぼ絶望的
-    else if (evalCloud > 70) cloudMultiplier = 0.3; // かなり厳しい
-    else if (evalCloud > 50) cloudMultiplier = 0.6; // 半減
-    else if (evalCloud > 20) cloudMultiplier = 0.9;
-
+    let cloudScore = Math.max(0, 15 - (evalCloud * 0.15));
     let locationWeight = lastAuroraProb === 0 ? (evalKp >= 4 ? 0.3 : 0) : Math.min(1.0, 0.6 + (lastAuroraProb / 30));
-    
-    currentTotalScore = baseScore * cloudMultiplier * (lastAuroraProb > 0 ? 1.0 : locationWeight);
-    currentTotalScore = Math.min(100, currentTotalScore);
-
-    // 判定基準
-    if (currentTotalScore >= 70 && evalCloud < 40) { resultEl.textContent = "High"; resultEl.className = "badge high"; }
-    else if (currentTotalScore >= 35 && evalCloud < 80) { resultEl.textContent = "Possible"; resultEl.className = "badge mid"; }
+    currentTotalScore = Math.min(100, (ovalScore + kpScore + cloudScore) * (lastAuroraProb > 0 ? 1.0 : locationWeight));
+    if (currentTotalScore >= 70) { resultEl.textContent = "High"; resultEl.className = "badge high"; }
+    else if (currentTotalScore >= 35) { resultEl.textContent = "Possible"; resultEl.className = "badge mid"; }
     else { resultEl.textContent = "Low"; resultEl.className = "badge low"; }
 }
 
-/* 以下は共通API処理 */
-async function reverseGeocode(lat, lon) { try { const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`); const data = await res.json(); document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country; } catch (e) { } }
+async function reverseGeocode(lat, lon) { try { const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`); const data = await res.json(); document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country; } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); } }
 async function getKp() { try { const res = await fetch(CORS + encodeURIComponent(KP_URL)); const data = await res.json(); const val = parseFloat(data[data.length - 1][1]); document.getElementById("kp").textContent = val.toFixed(1); return val; } catch(e) { return 0; } }
-async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "--"; const hr = new Date().getHours(); document.getElementById("kp-short").innerHTML = (hr >= 21 || hr < 3) ? "🕒 In 3h: Ref 3-day" : "🌙 Tonight: Ref 3-day"; } catch(e) { } }
-async function checkOval() { try { const res = await fetch(CORS + encodeURIComponent(OVAL_URL)); const data = await res.json(); let bestProb = 0; let minDiff = 999; data.coordinates.forEach(p => { let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - (p[0] > 180 ? p[0] - 360 : p[0])); if (diff < minDiff) { minDiff = diff; bestProb = p[2]; } }); lastAuroraProb = bestProb; document.getElementById("oval-prob").textContent = `Local Prob: ${bestProb}%`; document.getElementById("oval").textContent = bestProb >= 10 ? "Near Oval" : "Outside"; } catch(e) { } }
+async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); document.getElementById("kp-short").innerHTML = `<div>${(hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"}: Ref 3-day forecast</div>`; } catch(e) { } }
+async function checkOval() { try { const res = await fetch(CORS + encodeURIComponent(OVAL_URL)); const data = await res.json(); cachedAuroraData = data; if (map) drawAurora(data); let bestProb = 0; let minDiff = 999; data.coordinates.forEach(p => { let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - (p[0] > 180 ? p[0] - 360 : p[0])); if (diff < minDiff) { minDiff = diff; bestProb = p[2]; } }); lastAuroraProb = bestProb; document.getElementById("oval-prob").textContent = `Probability at your location: ${bestProb}%`; document.getElementById("oval").textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval"; } catch(e) { } }
 async function getCloud() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`); const data = await res.json(); document.getElementById("cloud").textContent = data.current.cloudcover + "%"; return data.current.cloudcover; } catch(e) { return 100; } }
-async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); document.getElementById("forecast").innerHTML = `Tonight: ${cloudDataHourly[21]}% / Tomorrow: ${cloudDataHourly[45]}%`; } catch(e) { } }
-function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if(!map) { map = L.map('map').setView([myLat, myLon], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map); } }
+async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; document.getElementById("forecast").innerHTML = html; } catch(e) { } }
+function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50); }
 function hideMapScreen() { document.getElementById('map-screen').style.display = 'none'; document.getElementById('home-screen').style.display = 'block'; }
+function initMap() { map = L.map('map', { maxBounds: L.latLngBounds(L.latLng(-85, -360), L.latLng(85, 720)), maxBoundsViscosity: 1.0, minZoom: 2 }).setView([myLat || 70, myLon || 0], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map); auroraLayer = L.layerGroup().addTo(map); if (cachedAuroraData) drawAurora(cachedAuroraData); if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6 }).addTo(map); }
+function drawAurora(data) { auroraLayer.clearLayers(); data.coordinates.forEach(p => { if (p[2] > 10) { let baseLon = p[0] > 180 ? p[0] - 360 : p[0]; let color = p[2] > 50 ? '#ff4500' : (p[2] > 25 ? '#ffff00' : '#00ff00'); [-360, 0, 360].forEach(offset => { L.rectangle([[p[1], baseLon + offset], [p[1] + 2, baseLon + offset + 2]], { color: color, weight: 0, fillOpacity: p[2] / 100, interactive: false }).addTo(auroraLayer); }); } }); }
 </script>
 </body>
 </html>

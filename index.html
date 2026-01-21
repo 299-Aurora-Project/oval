@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.26</title>
+<title>Aurora Forecast Pro v t1.0.29</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 /* スタイル定義は維持 */
@@ -74,7 +74,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.26</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.29</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -89,8 +89,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <button id="btn-search" onclick="searchCity(); event.stopPropagation();" disabled>Set</button>
             <div id="autocomplete-list" class="autocomplete-items"></div>
         </div>
-        <div id="search-error" class="error-msg">City not found. Please check your input.</div>
-    </div>
+        </div>
 
     <div class="card" id="card-main-result">
         <div id="total-label" class="label-main">Overall Probability</div>
@@ -213,7 +212,6 @@ function toggleData() {
 function handleCityInput(el) {
     const val = el.value.trim();
     document.getElementById("btn-search").disabled = val.length === 0;
-    document.getElementById("search-error").style.opacity = "0";
     clearTimeout(searchTimer);
     if (val.length < 2) { closeAllLists(); return; }
     searchTimer = setTimeout(async () => {
@@ -277,7 +275,6 @@ async function getLocation() {
 
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
-    const errorEl = document.getElementById("search-error"); errorEl.style.opacity = "0";
     setItemLoading('loc', true);
     document.getElementById('btn-search').classList.add('loading-btn');
     try {
@@ -287,7 +284,7 @@ async function searchCity() {
             const res0 = data.results[0]; myLat = res0.latitude; myLon = res0.longitude;
             document.getElementById("loc").textContent = `${res0.name}, ${res0.country}`;
             updateAll();
-        } else { document.getElementById('loc').textContent = "Not Set"; errorEl.style.opacity = "1"; }
+        } else { document.getElementById('loc').textContent = "Not Set"; }
     } catch (e) { alert("Search Error"); }
     document.getElementById('btn-search').classList.remove('loading-btn');
 }
@@ -340,7 +337,7 @@ function calculateTotal() {
 async function reverseGeocode(lat, lon) { try { const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`); const data = await res.json(); document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country; } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); } }
 
 async function getKp() { try { const res = await fetch(CORS + encodeURIComponent(KP_URL)); const data = await res.json(); const val = parseFloat(data[data.length - 1][1]); const el = document.getElementById("kp"); el.textContent = val.toFixed(1); el.dataset.value = val; if(val >= 5) el.className = "badge high"; else if(val >= 3) el.className = "badge mid"; else el.className = "badge low"; updateTimestamp('time-kp'); return val; } catch(e) { return 0; } }
-async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); document.getElementById("kp-short").innerHTML = `<div>${(hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"}: Ref 3-day forecast</div>`; updateTimestamp('time-kp3'); } catch(e) { } }
+async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "Updating..."; document.getElementById("kp-short").innerHTML = `<div>Ref 3-day forecast (NOAA)</div>`; updateTimestamp('time-kp3'); } catch(e) { } }
 
 async function checkOval() { 
     try { 

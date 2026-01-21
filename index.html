@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.17</title>
+<title>Aurora Forecast Pro v t1.0.18</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -39,8 +39,9 @@ button:hover { background: #5bc0be; color: #0b132b; }
 .refresh-btn + .last-updated { position: absolute; top: 40px; right: 15px; width: auto; }
 .sub-refresh-btn + .last-updated { position: absolute; top: 40px; right: 0; width: auto; }
 
-/* ローディング時のスタイルを修正 */
-.loading-text { opacity: 0.6; font-style: italic; font-size: 1rem; color: #8b949e; }
+/* ローディングスタイルの修正：砂時計を非イタリックに */
+.loading-text { opacity: 0.6; font-size: 1rem; color: #8b949e; font-style: normal; }
+.loading-text i { font-style: italic; }
 .loading-btn { pointer-events: none; filter: grayscale(0.5); opacity: 0.7; }
 
 #hidden-data { display: none; }
@@ -78,7 +79,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.17</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.18</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -93,7 +94,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     </div>
 
     <div class="card" id="card-main-result">
-        <div id="total-label" class="label-main">Overall Probability</div>
+        <div id="total-label" class="label-main">Overall Current Probability</div>
         <div id="result" class="badge badge-large low">--</div>
         <div style="margin-top: 15px;">
             <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">View Details</button>
@@ -106,7 +107,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
     <div id="hidden-data">
         <div class="card" id="card-oval">
-            <div class="label-main">Aurora Oval Check</div>
+            <div class="label-main">Current Aurora Oval</div>
             <div id="oval" class="badge low">--</div>
             <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin: 10px 0;"></div>
             <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">View Aurora Map</button>
@@ -115,7 +116,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         </div>
 
         <div class="card" id="card-kp-group">
-            <div class="label-main">Kp Index (Current)</div>
+            <div class="label-main">Current Kp Index</div>
             <div id="kp" class="badge low">--</div>
             <button id="btn-refresh-kp" class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
             <div id="time-kp" class="last-updated"></div>
@@ -129,7 +130,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         </div>
 
         <div class="card" id="card-cloud-group">
-            <div class="label-main">Cloud Cover (Current)</div>
+            <div class="label-main">Current Cloud Cover</div>
             <div id="cloud" class="badge low">--</div>
             <button id="btn-refresh-cloud" class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
             <div id="time-cloud" class="last-updated"></div>
@@ -149,7 +150,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>Optimized Logic (v t1.0.17):</strong>
+            <strong>Optimized Logic (v t1.0.13+):</strong>
             <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
             <table class="detail-table">
                 <tr><th>Item</th><th>Max</th><th>Details</th></tr>
@@ -195,15 +196,13 @@ function openModal() {
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-// 読み込み中表示の改善
 function setItemLoading(id, isLoading) {
     const el = document.getElementById(id);
     if (!el) return;
     if (isLoading) {
         el.dataset.oldContent = el.innerHTML;
-        el.innerHTML = '<span class="loading-text">⌛ Loading...</span>';
-    } else if (el.dataset.oldContent && el.innerHTML.includes('⌛')) {
-        // 成功時は各関数内で上書きされるため、ここでの復帰は基本不要だが保険として
+        // 砂時計をiタグの外に出すことで非イタリックを維持、Loadingをiタグでイタリックに
+        el.innerHTML = '<span class="loading-text">⌛ <i>Loading...</i></span>';
     }
 }
 
@@ -292,11 +291,12 @@ async function refreshItem(type) {
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
-    let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "Now" : "21:00";
-    document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
+    let isNow = (currentHour >= 21 || currentHour < 3);
+    let targetHourLabel = isNow ? "Current" : "at 21:00";
+    document.getElementById("total-label").textContent = `Overall ${targetHourLabel} Probability`;
     
     let evalKp = parseFloat(document.getElementById("kp").dataset.value) || 0;
-    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").dataset.value) || 0);
+    let evalCloud = (targetHourLabel === "at 21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").dataset.value) || 0);
     
     let ovalScore = (lastAuroraProb * 1.2) + (lastAuroraProb === 0 ? 5 : 10);
     ovalScore = Math.min(45, ovalScore);

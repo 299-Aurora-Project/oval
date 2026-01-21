@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro v t1.0.18</title>
+<title>Aurora Forecast Pro v t1.0.19</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -18,7 +18,8 @@ body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; pa
 h1 { margin: 0; font-size: 1.5rem; }
 
 .card { background:#1c2541; padding:20px; border-radius:12px; margin-bottom:20px; position: relative; border: 1px solid #30363d; }
-.label-main { font-size: 1.1rem; font-weight: bold; color: #5bc0be; margin-bottom: 10px; }
+.label-main { font-size: 1.1rem; font-weight: bold; color: #5bc0be; margin-bottom: 0px; }
+.label-sub-current { font-size: 0.8rem; color: #8b949e; margin-bottom: 10px; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
 
@@ -30,7 +31,8 @@ h1 { margin: 0; font-size: 1.5rem; }
 
 input, button { margin-top:6px; padding:6px 12px; border-radius: 4px; border: none; font-weight: bold; }
 button { cursor: pointer; background: #3a506b; color: white; transition: 0.2s; font-size: 0.9rem; }
-button:hover { background: #5bc0be; color: #0b132b; }
+button:hover:not(:disabled) { background: #5bc0be; color: #0b132b; }
+button:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
@@ -39,7 +41,8 @@ button:hover { background: #5bc0be; color: #0b132b; }
 .refresh-btn + .last-updated { position: absolute; top: 40px; right: 15px; width: auto; }
 .sub-refresh-btn + .last-updated { position: absolute; top: 40px; right: 0; width: auto; }
 
-/* ローディングスタイルの修正：砂時計を非イタリックに */
+.error-msg { color: #ff6b6b; font-size: 0.75rem; margin-left: 10px; display: none; }
+
 .loading-text { opacity: 0.6; font-size: 1rem; color: #8b949e; font-style: normal; }
 .loading-text i { font-style: italic; }
 .loading-btn { pointer-events: none; filter: grayscale(0.5); opacity: 0.7; }
@@ -79,7 +82,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.18</span></h1>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.19</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -89,12 +92,14 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div id="loc" class="value">Not Set</div>
         <button id="btn-gps" onclick="getLocation(); event.stopPropagation();">Get via GPS</button><br>
         Search City:
-        <input id="cityInput" placeholder="e.g. Fairbanks, AK" onclick="event.stopPropagation()">
-        <button id="btn-search" onclick="searchCity(); event.stopPropagation();">Set</button>
+        <input id="cityInput" placeholder="e.g. Fairbanks, AK" oninput="toggleSetButton()" onclick="event.stopPropagation()">
+        <button id="btn-search" onclick="searchCity(); event.stopPropagation();" disabled>Set</button>
+        <span id="search-error" class="error-msg">都市が見つかりませんでした。入力を確認してください。</span>
     </div>
 
     <div class="card" id="card-main-result">
-        <div id="total-label" class="label-main">Overall Current Probability</div>
+        <div id="total-label" class="label-main">Overall Probability</div>
+        <div id="total-sub-label" class="label-sub-current">Current:</div>
         <div id="result" class="badge badge-large low">--</div>
         <div style="margin-top: 15px;">
             <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">View Details</button>
@@ -107,7 +112,8 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
     <div id="hidden-data">
         <div class="card" id="card-oval">
-            <div class="label-main">Current Aurora Oval</div>
+            <div class="label-main">Aurora Oval</div>
+            <div class="label-sub-current">Current:</div>
             <div id="oval" class="badge low">--</div>
             <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin: 10px 0;"></div>
             <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">View Aurora Map</button>
@@ -116,7 +122,8 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         </div>
 
         <div class="card" id="card-kp-group">
-            <div class="label-main">Current Kp Index</div>
+            <div class="label-main">Kp Index</div>
+            <div class="label-sub-current">Current:</div>
             <div id="kp" class="badge low">--</div>
             <button id="btn-refresh-kp" class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
             <div id="time-kp" class="last-updated"></div>
@@ -130,7 +137,8 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         </div>
 
         <div class="card" id="card-cloud-group">
-            <div class="label-main">Current Cloud Cover</div>
+            <div class="label-main">Cloud Cover</div>
+            <div class="label-sub-current">Current:</div>
             <div id="cloud" class="badge low">--</div>
             <button id="btn-refresh-cloud" class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
             <div id="time-cloud" class="last-updated"></div>
@@ -178,6 +186,10 @@ const FORECAST_URL = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";
 let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData = null;
 let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
+let lastScrollPos = 0;
+
+// 自動更新タイマー (15分 = 900,000ms)
+setInterval(() => { if (myLat !== null) updateAll(); }, 900000);
 
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
 
@@ -187,6 +199,12 @@ function toggleData() {
     const isHidden = hiddenSection.style.display !== "block";
     hiddenSection.style.display = isHidden ? "block" : "none";
     btn.textContent = isHidden ? "Show Less Information" : "Show All Information";
+}
+
+function toggleSetButton() {
+    const input = document.getElementById("cityInput");
+    document.getElementById("btn-search").disabled = input.value.trim().length === 0;
+    document.getElementById("search-error").style.display = "none";
 }
 
 function openModal() {
@@ -201,7 +219,6 @@ function setItemLoading(id, isLoading) {
     if (!el) return;
     if (isLoading) {
         el.dataset.oldContent = el.innerHTML;
-        // 砂時計をiタグの外に出すことで非イタリックを維持、Loadingをiタグでイタリックに
         el.innerHTML = '<span class="loading-text">⌛ <i>Loading...</i></span>';
     }
 }
@@ -231,7 +248,9 @@ async function getLocation() {
 
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
-    if (!city) return;
+    const errorEl = document.getElementById("search-error");
+    errorEl.style.display = "none";
+    
     setItemLoading('loc', true);
     document.getElementById('btn-search').classList.add('loading-btn');
     try {
@@ -243,8 +262,8 @@ async function searchCity() {
             document.getElementById("loc").textContent = `${res0.name}, ${res0.country}`;
             updateAll();
         } else {
-            alert("City not found");
             document.getElementById('loc').textContent = "Not Set";
+            errorEl.style.display = "inline";
         }
     } catch (e) { alert("Search Error"); }
     document.getElementById('btn-search').classList.remove('loading-btn');
@@ -291,12 +310,14 @@ async function refreshItem(type) {
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
-    let isNow = (currentHour >= 21 || currentHour < 3);
-    let targetHourLabel = isNow ? "Current" : "at 21:00";
-    document.getElementById("total-label").textContent = `Overall ${targetHourLabel} Probability`;
+    const subLabelEl = document.getElementById("total-sub-label");
+    
+    let isNight = (currentHour >= 21 || currentHour < 3);
+    let targetHourLabel = isNight ? "Current:" : "at 21:00:";
+    subLabelEl.textContent = targetHourLabel;
     
     let evalKp = parseFloat(document.getElementById("kp").dataset.value) || 0;
-    let evalCloud = (targetHourLabel === "at 21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").dataset.value) || 0);
+    let evalCloud = (!isNight && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").dataset.value) || 0);
     
     let ovalScore = (lastAuroraProb * 1.2) + (lastAuroraProb === 0 ? 5 : 10);
     ovalScore = Math.min(45, ovalScore);
@@ -381,8 +402,21 @@ async function getCloud() {
 
 async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; document.getElementById("forecast").innerHTML = html; updateTimestamp('time-short'); } catch(e) { } }
 
-function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50); }
-function hideMapScreen() { document.getElementById('map-screen').style.display = 'none'; document.getElementById('home-screen').style.display = 'block'; }
+function showMapScreen() { 
+    lastScrollPos = window.pageYOffset;
+    document.getElementById('home-screen').style.display = 'none'; 
+    document.getElementById('map-screen').style.display = 'block'; 
+    if (!map) initMap(); 
+    else setTimeout(() => { map.invalidateSize(); }, 50); 
+    window.scrollTo(0,0);
+}
+
+function hideMapScreen() { 
+    document.getElementById('map-screen').style.display = 'none'; 
+    document.getElementById('home-screen').style.display = 'block'; 
+    window.scrollTo(0, lastScrollPos);
+}
+
 function initMap() { map = L.map('map', { maxBounds: L.latLngBounds(L.latLng(-85, -360), L.latLng(85, 720)), maxBoundsViscosity: 1.0, minZoom: 2 }).setView([myLat || 70, myLon || 0], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map); auroraLayer = L.layerGroup().addTo(map); if (cachedAuroraData) drawAurora(cachedAuroraData); if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6 }).addTo(map); }
 function drawAurora(data) { auroraLayer.clearLayers(); data.coordinates.forEach(p => { if (p[2] > 10) { let baseLon = p[0] > 180 ? p[0] - 360 : p[0]; let color = p[2] > 50 ? '#ff4500' : (p[2] > 25 ? '#ffff00' : '#00ff00'); [-360, 0, 360].forEach(offset => { L.rectangle([[p[1], baseLon + offset], [p[1] + 2, baseLon + offset + 2]], { color: color, weight: 0, fillOpacity: p[2] / 100, interactive: false }).addTo(auroraLayer); }); } }); }
 </script>

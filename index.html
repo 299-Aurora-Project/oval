@@ -12,9 +12,9 @@ body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; pa
 .produce-by { font-size: 0.7rem; color: #8b949e; margin-top: -5px; margin-bottom: 10px; align-self: flex-end; }
 .version { font-size: 0.4em; vertical-align: middle; color: #5bc0be; margin-left: 8px; font-weight: normal; }
 
-/* タイトル行のレイアウト */
 .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
-.beta-suffix { font-size: 0.45em; color: #8b949e; font-weight: normal; }
+/* タイトル横の(beta)を小さく表示 */
+.beta-suffix { font-size: 0.6em; color: #8b949e; font-weight: normal; margin-left: 5px; text-transform: lowercase; }
 
 h1 { margin: 0; font-size: 1.5rem; }
 
@@ -32,12 +32,14 @@ button:hover { background: #5bc0be; color: #0b132b; }
 .refresh-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8em; padding: 4px 8px; }
 .sub-refresh-btn { position: absolute; top: 15px; right: 0; font-size: 0.8em; padding: 4px 8px; }
 
+/* ローディング時のスタイル修正: 色の変化が元に戻るように設定 */
+.loading { opacity: 0.6; pointer-events: none; filter: grayscale(0.5); }
+.loading::after { content: " ⌛"; }
+
 #hidden-data { display: none; }
 .toggle-btn { width: 100%; margin-bottom: 20px; background: #1c2541; border: 1px solid #3a506b; color: #5bc0be; }
 
 pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospace; font-size: 0.85em; overflow-x: auto; white-space: pre-wrap; border: 1px solid #3a506b; min-height: 50px; }
-.loading { opacity: 0.5; pointer-events: none; }
-.loading::after { content: " ⌛"; }
 
 #welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
 .welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; z-index: 30001; }
@@ -69,8 +71,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 <div id="home-screen" class="container">
     <div class="header-area">
         <div class="title-row">
-            <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.12</span></h1>
-            <span class="beta-suffix">(Beta)</span>
+            <h1>🌌 Aurora Forecast Pro<span class="beta-suffix">(beta)</span> <span class="version">v t1.0.12</span></h1>
         </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
@@ -78,19 +79,19 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
     <div class="card" id="card-loc">
         <div class="label-main">Current Location</div>
         <div id="loc" class="value">Not Set</div>
-        <button onclick="getLocation(); event.stopPropagation();">Get via GPS</button><br>
+        <button id="btn-gps" onclick="getLocation(); event.stopPropagation();">Get via GPS</button><br>
         Search City:
         <input id="cityInput" placeholder="e.g. Fairbanks, AK" onclick="event.stopPropagation()">
-        <button onclick="searchCity(); event.stopPropagation();">Set</button>
+        <button id="btn-search" onclick="searchCity(); event.stopPropagation();">Set</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="card-main-result">
         <div id="total-label" class="label-main">Overall Probability</div>
         <div id="result" class="badge low">--</div>
         <div style="margin-top: 15px;">
             <button onclick="openModal(); event.stopPropagation();" style="font-size: 0.85em; background: #1c2541; border: 1px solid #3a506b; padding: 8px 16px;">View Details</button>
         </div>
-        <button class="refresh-btn" onclick="updateAll(); event.stopPropagation();">Update All</button>
+        <button id="btn-update-all" class="refresh-btn" onclick="updateAll(); event.stopPropagation();">Update All</button>
     </div>
 
     <button id="toggle-data-btn" class="toggle-btn" onclick="toggleData(); event.stopPropagation();">Show All Information</button>
@@ -101,19 +102,19 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <div id="oval" class="value">--</div>
             <div id="oval-prob" style="font-size: 0.9rem; color: #8b949e; margin-bottom: 10px;"></div>
             <button onclick="showMapScreen(); event.stopPropagation();" style="background: #238636;">View Aurora Map</button>
-            <button class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">Refresh</button>
+            <button id="btn-refresh-oval" class="refresh-btn" onclick="refreshItem('oval'); event.stopPropagation();">Refresh</button>
         </div>
 
         <div class="card" id="card-kp-group">
             <div class="label-main">Kp Index</div>
             <div style="font-size: 0.8rem; color: #8b949e;">Current:</div>
             <div id="kp" class="value">--</div>
-            <button class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
+            <button id="btn-refresh-kp" class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
             <div class="sub-section" id="card-kp3">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="kp-short" class="value" style="font-size: 1rem;">--</div>
                 <pre id="kpForecast" style="margin-top:10px;">--</pre>
-                <button class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">Refresh</button>
+                <button id="btn-refresh-kp3" class="sub-refresh-btn" onclick="refreshItem('kp3'); event.stopPropagation();">Refresh</button>
             </div>
         </div>
 
@@ -121,11 +122,11 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <div class="label-main">Cloud Cover</div>
             <div style="font-size: 0.8rem; color: #8b949e;">Current:</div>
             <div id="cloud" class="value">--</div>
-            <button class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
+            <button id="btn-refresh-cloud" class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
             <div class="sub-section" id="card-short">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="forecast" class="value" style="font-size: 1rem;">--</div>
-                <button class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">Refresh</button>
+                <button id="btn-refresh-short" class="sub-refresh-btn" onclick="refreshItem('short'); event.stopPropagation();">Refresh</button>
             </div>
         </div>
     </div>
@@ -145,14 +146,6 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
                 <tr><td>Magnetic</td><td>40</td><td>Kp Index sensitivity adjusted</td></tr>
                 <tr><td>Sky</td><td>15</td><td>Clear sky impact</td></tr>
             </table>
-        </div>
-        <div style="font-size: 0.85rem;">
-            <strong>Criteria:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-                <li>70%+: High Visibility</li>
-                <li>35%-69%: Possible (Expect horizon view)</li>
-                <li>Below 35%: Difficult</li>
-            </ul>
         </div>
     </div>
 </div>
@@ -174,13 +167,16 @@ let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
+
+// ラベルを "Show Less Information" に修正
 function toggleData() {
     const hiddenSection = document.getElementById("hidden-data");
     const btn = document.getElementById("toggle-data-btn");
     const isHidden = hiddenSection.style.display !== "block";
     hiddenSection.style.display = isHidden ? "block" : "none";
-    btn.textContent = isHidden ? "Hide All Information" : "Show All Information";
+    btn.textContent = isHidden ? "Show Less Information" : "Show All Information";
 }
+
 function openModal() {
     if (myLat === null) return alert("Please set your location first");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
@@ -188,7 +184,18 @@ function openModal() {
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-/* 位置情報関連 */
+/* ローディング表示管理 (ボタンの状態を確実に復元する) */
+function toggleLoading(id, isLoading) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isLoading) {
+        el.classList.add('loading');
+        // ボタン自体の色を固定化させないよう、クラス制御に留める
+    } else {
+        el.classList.remove('loading');
+    }
+}
+
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
@@ -198,6 +205,7 @@ async function getLocation() {
         toggleLoading('card-loc', false);
     }, err => { alert("GPS Fetch Failed"); toggleLoading('card-loc', false); });
 }
+
 async function searchCity() {
     const city = document.getElementById("cityInput").value;
     if (!city) return;
@@ -214,75 +222,70 @@ async function searchCity() {
     } catch (e) { alert("Search Error"); }
     toggleLoading('card-loc', false);
 }
-function toggleLoading(id, isLoading) {
-    const el = document.getElementById(id);
-    if (el) isLoading ? el.classList.add('loading') : el.classList.remove('loading');
-}
+
 async function updateAll() {
     if (myLat === null) return;
-    const cards = ['card-kp-group', 'card-cloud-group', 'card-oval'];
+    const btn = document.getElementById('btn-update-all');
+    const cards = ['card-kp-group', 'card-cloud-group', 'card-oval', 'card-main-result'];
     cards.forEach(id => toggleLoading(id, true));
+    if(btn) btn.classList.add('loading');
+
     await Promise.all([getKp(), fetchKp3DayForecast(), checkOval(), getCloud(), shortForecast()]);
     calculateTotal();
+
     cards.forEach(id => toggleLoading(id, false));
+    if(btn) btn.classList.remove('loading');
 }
+
 async function refreshItem(type) {
     if (myLat === null) return alert("Please set your location first");
     const mapping = { kp: 'card-kp-group', kp3: 'card-kp3', oval: 'card-oval', cloud: 'card-cloud-group', short: 'card-short' };
+    const btnMapping = { kp: 'btn-refresh-kp', kp3: 'btn-refresh-kp3', oval: 'btn-refresh-oval', cloud: 'btn-refresh-cloud', short: 'btn-refresh-short' };
+    
     toggleLoading(mapping[type], true);
+    const btn = document.getElementById(btnMapping[type]);
+    if(btn) btn.classList.add('loading');
+
     if (type === 'kp') await getKp();
     if (type === 'kp3') await fetchKp3DayForecast();
     if (type === 'oval') await checkOval();
     if (type === 'cloud') await getCloud();
     if (type === 'short') await shortForecast();
+    
     calculateTotal();
     toggleLoading(mapping[type], false);
-}
-async function reverseGeocode(lat, lon) {
-    try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`);
-        const data = await res.json();
-        document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country;
-    } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); }
+    if(btn) btn.classList.remove('loading');
 }
 
-/* 計算ロジック (v t1.0.12) */
+/* 以下のロジックは v1.0.12 基準を維持 */
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
     let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "Now" : "21:00";
     document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
-    
     let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
     let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 100);
-
     let ovalScore = (lastAuroraProb * 1.2) + (lastAuroraProb === 0 ? 5 : 10);
     ovalScore = Math.min(45, ovalScore);
-    let kpScore = evalKp * 12; 
-    if (evalKp >= 3) kpScore += 5;
-    kpScore = Math.min(40, kpScore);
+    let kpScore = Math.min(40, evalKp * 12 + (evalKp >= 3 ? 5 : 0));
     let cloudScore = Math.max(0, 15 - (evalCloud * 0.15));
     let locationWeight = lastAuroraProb === 0 ? (evalKp >= 4 ? 0.3 : 0) : Math.min(1.0, 0.6 + (lastAuroraProb / 30));
-    
-    currentTotalScore = (ovalScore + kpScore + cloudScore) * (lastAuroraProb > 0 ? 1.0 : locationWeight);
-    currentTotalScore = Math.min(100, currentTotalScore);
-
+    currentTotalScore = Math.min(100, (ovalScore + kpScore + cloudScore) * (lastAuroraProb > 0 ? 1.0 : locationWeight));
     if (currentTotalScore >= 70) { resultEl.textContent = "High"; resultEl.className = "badge high"; }
     else if (currentTotalScore >= 35) { resultEl.textContent = "Possible"; resultEl.className = "badge mid"; }
     else { resultEl.textContent = "Low"; resultEl.className = "badge low"; }
 }
 
-/* API取得 & 地図描画 */
+async function reverseGeocode(lat, lon) { try { const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`); const data = await res.json(); document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country; } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); } }
 async function getKp() { try { const res = await fetch(CORS + encodeURIComponent(KP_URL)); const data = await res.json(); const val = parseFloat(data[data.length - 1][1]); document.getElementById("kp").textContent = val.toFixed(1); return val; } catch(e) { return 0; } }
-async function fetchKp3DayForecast() { const el = document.getElementById("kpForecast"); const shortEl = document.getElementById("kp-short"); try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); el.innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); let targetLabel = (hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"; shortEl.innerHTML = `<div>${targetLabel}: Ref 3-day forecast</div>`; } catch(e) { el.innerText = "Fetch Error"; } }
-async function checkOval() { const el = document.getElementById("oval"); const probEl = document.getElementById("oval-prob"); try { const res = await fetch(CORS + encodeURIComponent(OVAL_URL)); const data = await res.json(); cachedAuroraData = data; if (map) drawAurora(data); let bestProb = 0; let minDiff = 999; data.coordinates.forEach(p => { let adjLon = p[0] > 180 ? p[0] - 360 : p[0]; let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - adjLon); if (diff < minDiff) { minDiff = diff; bestProb = p[2]; } }); lastAuroraProb = bestProb; probEl.textContent = `Probability at your location: ${bestProb}%`; el.textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval"; } catch(e) { el.textContent = "Error"; } }
+async function fetchKp3DayForecast() { try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); document.getElementById("kpForecast").innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); document.getElementById("kp-short").innerHTML = `<div>${(hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"}: Ref 3-day forecast</div>`; } catch(e) { } }
+async function checkOval() { try { const res = await fetch(CORS + encodeURIComponent(OVAL_URL)); const data = await res.json(); cachedAuroraData = data; if (map) drawAurora(data); let bestProb = 0; let minDiff = 999; data.coordinates.forEach(p => { let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - (p[0] > 180 ? p[0] - 360 : p[0])); if (diff < minDiff) { minDiff = diff; bestProb = p[2]; } }); lastAuroraProb = bestProb; document.getElementById("oval-prob").textContent = `Probability at your location: ${bestProb}%`; document.getElementById("oval").textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval"; } catch(e) { } }
 async function getCloud() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`); const data = await res.json(); document.getElementById("cloud").textContent = data.current.cloudcover + "%"; return data.current.cloudcover; } catch(e) { return 100; } }
-async function shortForecast() { const forecastEl = document.getElementById("forecast"); try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; forecastEl.innerHTML = html; } catch(e) { forecastEl.innerHTML = "Fetch Error"; } }
+async function shortForecast() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; document.getElementById("forecast").innerHTML = html; } catch(e) { } }
 function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50); }
 function hideMapScreen() { document.getElementById('map-screen').style.display = 'none'; document.getElementById('home-screen').style.display = 'block'; }
-function initMap() { const minLon = -360; const maxLon = 720; const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon)); map = L.map('map', { maxBounds: bounds, maxBoundsViscosity: 1.0, minZoom: 2, worldCopyJump: false }).setView([myLat || 70, myLon || 0], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB', noWrap: false }).addTo(map); auroraLayer = L.layerGroup().addTo(map); if (cachedAuroraData) drawAurora(cachedAuroraData); if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("Current Location"); }
-function drawAurora(data) { if (!auroraLayer) return; auroraLayer.clearLayers(); data.coordinates.forEach(p => { const lon = p[0]; const lat = p[1]; const prob = p[2]; if (prob > 10) { let baseLon = lon > 180 ? lon - 360 : lon; let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00'); [-360, 0, 360, 720].forEach(offset => { let finalLon = baseLon + offset; if (finalLon >= -360 && finalLon <= 720) { L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], { color: color, weight: 0, fillOpacity: prob / 100, interactive: false }).addTo(auroraLayer); } }); } }); }
+function initMap() { map = L.map('map', { maxBounds: L.latLngBounds(L.latLng(-85, -360), L.latLng(85, 720)), maxBoundsViscosity: 1.0, minZoom: 2 }).setView([myLat || 70, myLon || 0], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map); auroraLayer = L.layerGroup().addTo(map); if (cachedAuroraData) drawAurora(cachedAuroraData); if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6 }).addTo(map); }
+function drawAurora(data) { auroraLayer.clearLayers(); data.coordinates.forEach(p => { if (p[2] > 10) { let baseLon = p[0] > 180 ? p[0] - 360 : p[0]; let color = p[2] > 50 ? '#ff4500' : (p[2] > 25 ? '#ffff00' : '#00ff00'); [-360, 0, 360].forEach(offset => { L.rectangle([[p[1], baseLon + offset], [p[1] + 2, baseLon + offset + 2]], { color: color, weight: 0, fillOpacity: p[2] / 100, interactive: false }).addTo(auroraLayer); }); } }); }
 </script>
 </body>
 </html>
-

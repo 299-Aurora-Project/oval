@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora Forecast Pro (Beta) v t1.1.1</title>
+<title>Aurora Forecast Pro v t1.0.12</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
@@ -11,14 +11,14 @@ body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; pa
 .header-area { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 10px; }
 .produce-by { font-size: 0.7rem; color: #8b949e; margin-top: -10px; margin-bottom: 10px; }
 .version { font-size: 0.4em; vertical-align: middle; color: #5bc0be; margin-left: 8px; font-weight: normal; }
+/* タイトル末尾のBeta用スタイル */
+.beta-suffix { font-size: 0.5em; vertical-align: middle; color: #8b949e; font-weight: normal; margin-left: 5px; }
 h1 { margin-bottom: 5px; width: 100%; text-align: left; }
 
 .card { background:#1c2541; padding:20px; border-radius:12px; margin-bottom:20px; position: relative; border: 1px solid #30363d; }
 .label-main { font-size: 1.1rem; font-weight: bold; color: #5bc0be; margin-bottom: 10px; }
 .value { font-size:1.6em; margin-top:4px; min-height: 1.2em; }
 .sub-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; position: relative; }
-
-/* 観測可能性バッジ */
 .badge { display:inline-block; padding:10px 24px; border-radius:30px; font-weight:bold; font-size: 1.5rem; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .low { background:#475569; } .mid { background:#ca8a04; } .high { background:#dc2626; }
 
@@ -36,18 +36,12 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 .loading { opacity: 0.5; pointer-events: none; }
 .loading::after { content: " ⌛"; }
 
-/* ウェルカムガイダンス */
 #welcome-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 30000; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
-.welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 0 20px rgba(91, 192, 190, 0.4); z-index: 30001; }
-
+.welcome-box { background: #5bc0be; color: #0b132b; padding: 25px; border-radius: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; z-index: 30001; }
 .arrow-container { display: flex; gap: 15px; margin-bottom: 10px; }
 .thin-arrow { font-size: 2.5rem; color: #5bc0be; font-weight: 100; animation: bounceThin 1.2s infinite; }
-@keyframes bounceThin {
-    0%, 100% { transform: translateY(0); opacity: 0.5; }
-    50% { transform: translateY(-15px); opacity: 1; }
-}
+@keyframes bounceThin { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-15px); opacity: 1; } }
 
-/* モーダル */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; justify-content: center; align-items: center; cursor: pointer; }
 .modal-content { background: #1c2541; width: 90%; max-width: 450px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #5bc0be; line-height: 1.6; cursor: default; }
 .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #8b949e; }
@@ -64,16 +58,14 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 <div id="welcome-overlay">
     <div class="arrow-container">
-        <div class="thin-arrow">↑</div>
-        <div class="thin-arrow">↑</div>
-        <div class="thin-arrow">↑</div>
+        <div class="thin-arrow">↑</div><div class="thin-arrow">↑</div><div class="thin-arrow">↑</div>
     </div>
     <div class="welcome-box">Please enter your location first</div>
 </div>
 
 <div id="home-screen" class="container">
     <div class="header-area">
-        <h1>🌌 Aurora Forecast Pro <span class="version">v t1.1.1</span></h1>
+        <h1>🌌 Aurora Forecast Pro <span class="beta-suffix">(Beta)</span> <span class="version">v t1.0.12</span></h1>
         <div class="produce-by">Produce by Shin</div>
     </div>
 
@@ -111,7 +103,6 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <div style="font-size: 0.8rem; color: #8b949e;">Current:</div>
             <div id="kp" class="value">--</div>
             <button class="refresh-btn" onclick="refreshItem('kp'); event.stopPropagation();">Refresh</button>
-            
             <div class="sub-section" id="card-kp3">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="kp-short" class="value" style="font-size: 1rem;">--</div>
@@ -125,7 +116,6 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
             <div style="font-size: 0.8rem; color: #8b949e;">Current:</div>
             <div id="cloud" class="value">--</div>
             <button class="refresh-btn" onclick="refreshItem('cloud'); event.stopPropagation();">Refresh</button>
-
             <div class="sub-section" id="card-short">
                 <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">Short Forecast:</div>
                 <div id="forecast" class="value" style="font-size: 1rem;">--</div>
@@ -140,31 +130,29 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
-        
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>Score Breakdown (Location Weighted):</strong>
+            <strong>Optimized Logic (v1.1.2+):</strong>
+            <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
             <table class="detail-table">
-                <tr><th>Item</th><th>Max</th><th>Logic</th></tr>
-                <tr><td>Oval Prob</td><td>40</td><td>Current Prob × 0.8</td></tr>
-                <tr><td>Magnetic</td><td>40</td><td>Kp Index × 10 (Max Kp4)</td></tr>
-                <tr><td>Sky Condition</td><td>20</td><td>Clear: 20 / Cloudy: 0</td></tr>
+                <tr><th>Item</th><th>Max</th><th>Details</th></tr>
+                <tr><td>Oval/Horizon</td><td>45</td><td>Base prob + Viewline bonus</td></tr>
+                <tr><td>Magnetic</td><td>40</td><td>Kp Index sensitivity adjusted</td></tr>
+                <tr><td>Sky</td><td>15</td><td>Clear sky impact</td></tr>
             </table>
-            <p style="font-size: 0.75rem; color: #ffbc42; margin-top: 5px;">*If Oval Prob is 0%, the score is forced to 0 due to physical constraints.</p>
         </div>
-
         <div style="font-size: 0.85rem;">
             <strong>Criteria:</strong>
             <ul style="margin: 5px 0; padding-left: 20px;">
                 <li>70%+: High Visibility</li>
-                <li>35%-69%: Visible under conditions</li>
-                <li>Below 35%: Difficult to observe</li>
+                <li>35%-69%: Possible (Expect horizon view)</li>
+                <li>Below 35%: Difficult</li>
             </ul>
         </div>
     </div>
 </div>
 
 <div id="map-screen">
-    <button class="btn" id="back-btn" onclick="hideMapScreen(); event.stopPropagation();">← Back</button>
+    <button class="btn" id="back-btn" onclick="hideMapScreen();">← Back</button>
     <div id="map"></div>
 </div>
 
@@ -179,153 +167,28 @@ let myLat = null; let myLon = null; let lastAuroraProb = 0; let cachedAuroraData
 let map = null; let auroraLayer = null; let cloudDataHourly = null;
 let currentTotalScore = 0;
 
-/* UI制御 */
 function closeWelcome() { document.getElementById('welcome-overlay').style.display = 'none'; }
 function toggleData() {
     const hiddenSection = document.getElementById("hidden-data");
     const btn = document.getElementById("toggle-data-btn");
-    if (hiddenSection.style.display === "block") {
-        hiddenSection.style.display = "none";
-        btn.textContent = "Show All Information";
-    } else {
-        hiddenSection.style.display = "block";
-        btn.textContent = "Hide All Information";
-    }
+    const isHidden = hiddenSection.style.display !== "block";
+    hiddenSection.style.display = isHidden ? "block" : "none";
+    btn.textContent = isHidden ? "Hide All Information" : "Show All Information";
 }
 function openModal() {
     if (myLat === null) return alert("Please set your location first");
     document.getElementById("score-pct").textContent = Math.round(currentTotalScore);
-    document.getElementById("modal-label-title").textContent = "Details: " + document.getElementById("total-label").textContent;
     document.getElementById("detailModal").style.display = "flex";
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-/* 地図 */
-function showMapScreen() {
-    document.getElementById('home-screen').style.display = 'none';
-    document.getElementById('map-screen').style.display = 'block';
-    if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50);
-}
-function hideMapScreen() {
-    document.getElementById('map-screen').style.display = 'none';
-    document.getElementById('home-screen').style.display = 'block';
-}
-function initMap() {
-    const minLon = -360; const maxLon = 720;
-    const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon));
-    map = L.map('map', { maxBounds: bounds, maxBoundsViscosity: 1.0, minZoom: 2, worldCopyJump: false }).setView([myLat || 70, myLon || 0], 3);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB', noWrap: false }).addTo(map);
-    auroraLayer = L.layerGroup().addTo(map);
-    if (cachedAuroraData) drawAurora(cachedAuroraData);
-    if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("Current Location");
-}
-function drawAurora(data) {
-    if (!auroraLayer) return;
-    auroraLayer.clearLayers();
-    data.coordinates.forEach(p => {
-        const lon = p[0]; const lat = p[1]; const prob = p[2];
-        if (prob > 10) {
-            let baseLon = lon > 180 ? lon - 360 : lon;
-            let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00');
-            [-360, 0, 360, 720].forEach(offset => {
-                let finalLon = baseLon + offset;
-                if (finalLon >= -360 && finalLon <= 720) {
-                    L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], { color: color, weight: 0, fillOpacity: prob / 100, interactive: false }).addTo(auroraLayer);
-                }
-            });
-        }
-    });
-}
-
-/* API取得 */
-async function getKp() {
-    try {
-        const res = await fetch(CORS + encodeURIComponent(KP_URL));
-        const data = await res.json();
-        const val = parseFloat(data[data.length - 1][1]);
-        document.getElementById("kp").textContent = val.toFixed(1);
-        return val;
-    } catch(e) { return 0; }
-}
-async function fetchKp3DayForecast() {
-    const el = document.getElementById("kpForecast");
-    const shortEl = document.getElementById("kp-short");
-    try {
-        const res = await fetch(CORS + encodeURIComponent(FORECAST_URL));
-        const text = await res.text();
-        const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i);
-        el.innerText = match ? match[0].trim() : "Updating...";
-        const hr = new Date().getHours();
-        let targetLabel = (hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)";
-        shortEl.innerHTML = `<div>${targetLabel}: Ref 3-day forecast</div>`;
-    } catch(e) { el.innerText = "Fetch Error"; }
-}
-async function checkOval() {
-    const el = document.getElementById("oval");
-    const probEl = document.getElementById("oval-prob");
-    try {
-        const res = await fetch(CORS + encodeURIComponent(OVAL_URL));
-        const data = await res.json();
-        cachedAuroraData = data; if (map) drawAurora(data);
-        let bestProb = 0; let minDiff = 999;
-        data.coordinates.forEach(p => {
-            let adjLon = p[0] > 180 ? p[0] - 360 : p[0];
-            let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - adjLon);
-            if (diff < minDiff) { minDiff = diff; bestProb = p[2]; }
-        });
-        lastAuroraProb = bestProb;
-        probEl.textContent = `Probability at your location: ${bestProb}%`;
-        el.textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval";
-    } catch(e) { el.textContent = "Error"; }
-}
-async function getCloud() {
-    try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`);
-        const data = await res.json();
-        document.getElementById("cloud").textContent = data.current.cloudcover + "%";
-        return data.current.cloudcover;
-    } catch(e) { return 100; }
-}
-async function shortForecast() {
-    const forecastEl = document.getElementById("forecast");
-    try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`);
-        const data = await res.json();
-        cloudDataHourly = data.hourly.cloudcover;
-        const hr = new Date().getHours();
-        let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`;
-        html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`;
-        forecastEl.innerHTML = html;
-    } catch(e) { forecastEl.innerHTML = "Fetch Error"; }
-}
-
-/* 計算ロジック */
-function calculateTotal() {
-    const now = new Date(); const currentHour = now.getHours();
-    const resultEl = document.getElementById("result");
-    let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "Now" : "21:00";
-    document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
-    
-    let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
-    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 100);
-    
-    // 足切りロジック（場所係数）
-    let locationWeight = lastAuroraProb === 0 ? 0 : Math.min(1.0, 0.5 + (lastAuroraProb / 20));
-    let rawScore = (lastAuroraProb * 0.8) + (Math.min(evalKp, 4) * 10) + (Math.max(0, 20 - evalCloud * 0.2));
-    currentTotalScore = rawScore * locationWeight;
-
-    if (currentTotalScore >= 70) { resultEl.textContent = "High"; resultEl.className = "badge high"; }
-    else if (currentTotalScore >= 35) { resultEl.textContent = "Possible"; resultEl.className = "badge mid"; }
-    else { resultEl.textContent = "Low"; resultEl.className = "badge low"; }
-}
-
-/* 位置情報と自動更新 */
+/* 共通関数 */
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
         myLat = p.coords.latitude; myLon = p.coords.longitude;
         await reverseGeocode(myLat, myLon);
-        updateAll(); // 地域確定時に自動更新
+        updateAll();
         toggleLoading('card-loc', false);
     }, err => { alert("GPS Fetch Failed"); toggleLoading('card-loc', false); });
 }
@@ -340,7 +203,7 @@ async function searchCity() {
             const res0 = data.results[0];
             myLat = res0.latitude; myLon = res0.longitude;
             document.getElementById("loc").textContent = `${res0.name}, ${res0.country}`;
-            updateAll(); // 地域確定時に自動更新
+            updateAll();
         }
     } catch (e) { alert("Search Error"); }
     toggleLoading('card-loc', false);
@@ -376,6 +239,43 @@ async function reverseGeocode(lat, lon) {
         document.getElementById("loc").textContent = (data.address.city || data.address.town || "Unknown") + ", " + data.address.country;
     } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); }
 }
+
+/* 計算ロジック (v1.1.2 継承) */
+function calculateTotal() {
+    const now = new Date(); const currentHour = now.getHours();
+    const resultEl = document.getElementById("result");
+    let targetHourLabel = (currentHour >= 21 || currentHour < 3) ? "Now" : "21:00";
+    document.getElementById("total-label").textContent = `Overall Probability (${targetHourLabel})`;
+    
+    let evalKp = parseFloat(document.getElementById("kp").textContent) || 0;
+    let evalCloud = (targetHourLabel === "21:00" && cloudDataHourly) ? cloudDataHourly[21] : (parseInt(document.getElementById("cloud").textContent) || 100);
+
+    let ovalScore = (lastAuroraProb * 1.2) + (lastAuroraProb === 0 ? 5 : 10);
+    ovalScore = Math.min(45, ovalScore);
+    let kpScore = evalKp * 12; 
+    if (evalKp >= 3) kpScore += 5;
+    kpScore = Math.min(40, kpScore);
+    let cloudScore = Math.max(0, 15 - (evalCloud * 0.15));
+    let locationWeight = lastAuroraProb === 0 ? (evalKp >= 4 ? 0.3 : 0) : Math.min(1.0, 0.6 + (lastAuroraProb / 30));
+    
+    currentTotalScore = (ovalScore + kpScore + cloudScore) * (lastAuroraProb > 0 ? 1.0 : locationWeight);
+    currentTotalScore = Math.min(100, currentTotalScore);
+
+    if (currentTotalScore >= 70) { resultEl.textContent = "High"; resultEl.className = "badge high"; }
+    else if (currentTotalScore >= 35) { resultEl.textContent = "Possible"; resultEl.className = "badge mid"; }
+    else { resultEl.textContent = "Low"; resultEl.className = "badge low"; }
+}
+
+/* API取得 & Map */
+async function getKp() { try { const res = await fetch(CORS + encodeURIComponent(KP_URL)); const data = await res.json(); const val = parseFloat(data[data.length - 1][1]); document.getElementById("kp").textContent = val.toFixed(1); return val; } catch(e) { return 0; } }
+async function fetchKp3DayForecast() { const el = document.getElementById("kpForecast"); const shortEl = document.getElementById("kp-short"); try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); el.innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); let targetLabel = (hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"; shortEl.innerHTML = `<div>${targetLabel}: Ref 3-day forecast</div>`; } catch(e) { el.innerText = "Fetch Error"; } }
+async function checkOval() { const el = document.getElementById("oval"); const probEl = document.getElementById("oval-prob"); try { const res = await fetch(CORS + encodeURIComponent(OVAL_URL)); const data = await res.json(); cachedAuroraData = data; if (map) drawAurora(data); let bestProb = 0; let minDiff = 999; data.coordinates.forEach(p => { let adjLon = p[0] > 180 ? p[0] - 360 : p[0]; let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - adjLon); if (diff < minDiff) { minDiff = diff; bestProb = p[2]; } }); lastAuroraProb = bestProb; probEl.textContent = `Probability at your location: ${bestProb}%`; el.textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval"; } catch(e) { el.textContent = "Error"; } }
+async function getCloud() { try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&current=cloudcover`); const data = await res.json(); document.getElementById("cloud").textContent = data.current.cloudcover + "%"; return data.current.cloudcover; } catch(e) { return 100; } }
+async function shortForecast() { const forecastEl = document.getElementById("forecast"); try { const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${myLat}&longitude=${myLon}&hourly=cloudcover`); const data = await res.json(); cloudDataHourly = data.hourly.cloudcover; const hr = new Date().getHours(); let html = (hr >= 21 || hr < 3) ? `<div>🕒 In 3h: Clouds ${cloudDataHourly[3]}%</div>` : `<div>🌙 Tonight(21:00): Clouds ${cloudDataHourly[21]}%</div>`; html += `<div>📅 Tomorrow(21:00): Clouds ${cloudDataHourly[45]}%</div>`; forecastEl.innerHTML = html; } catch(e) { forecastEl.innerHTML = "Fetch Error"; } }
+function showMapScreen() { document.getElementById('home-screen').style.display = 'none'; document.getElementById('map-screen').style.display = 'block'; if (!map) initMap(); else setTimeout(() => { map.invalidateSize(); }, 50); }
+function hideMapScreen() { document.getElementById('map-screen').style.display = 'none'; document.getElementById('home-screen').style.display = 'block'; }
+function initMap() { const minLon = -360; const maxLon = 720; const bounds = L.latLngBounds(L.latLng(-85, minLon), L.latLng(85, maxLon)); map = L.map('map', { maxBounds: bounds, maxBoundsViscosity: 1.0, minZoom: 2, worldCopyJump: false }).setView([myLat || 70, myLon || 0], 3); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB', noWrap: false }).addTo(map); auroraLayer = L.layerGroup().addTo(map); if (cachedAuroraData) drawAurora(cachedAuroraData); if (myLat && myLon) L.circleMarker([myLat, myLon], { color: '#5bc0be', radius: 6, fillOpacity: 0.8 }).addTo(map).bindPopup("Current Location"); }
+function drawAurora(data) { if (!auroraLayer) return; auroraLayer.clearLayers(); data.coordinates.forEach(p => { const lon = p[0]; const lat = p[1]; const prob = p[2]; if (prob > 10) { let baseLon = lon > 180 ? lon - 360 : lon; let color = prob > 50 ? '#ff4500' : (prob > 25 ? '#ffff00' : '#00ff00'); [-360, 0, 360, 720].forEach(offset => { let finalLon = baseLon + offset; if (finalLon >= -360 && finalLon <= 720) { L.rectangle([[lat, finalLon], [lat + 2, finalLon + 2]], { color: color, weight: 0, fillOpacity: prob / 100, interactive: false }).addTo(auroraLayer); } }); } }); }
 </script>
 </body>
 </html>

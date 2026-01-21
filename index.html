@@ -8,12 +8,15 @@
 <style>
 body { font-family: system-ui, sans-serif; background:#0b132b; color:#eaeaea; padding:20px; margin:0; }
 .container { max-width:600px; margin: 0 auto; }
-.header-area { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 10px; }
-.produce-by { font-size: 0.7rem; color: #8b949e; margin-top: -10px; margin-bottom: 10px; }
+.header-area { display: flex; flex-direction: column; margin-bottom: 10px; }
+.produce-by { font-size: 0.7rem; color: #8b949e; margin-top: -5px; margin-bottom: 10px; align-self: flex-end; }
 .version { font-size: 0.4em; vertical-align: middle; color: #5bc0be; margin-left: 8px; font-weight: normal; }
-/* タイトル末尾のBeta用スタイル */
-.beta-suffix { font-size: 0.5em; vertical-align: middle; color: #8b949e; font-weight: normal; margin-left: 5px; }
-h1 { margin-bottom: 5px; width: 100%; text-align: left; }
+
+/* タイトル行のレイアウト */
+.title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+.beta-suffix { font-size: 0.45em; color: #8b949e; font-weight: normal; }
+
+h1 { margin: 0; font-size: 1.5rem; }
 
 .card { background:#1c2541; padding:20px; border-radius:12px; margin-bottom:20px; position: relative; border: 1px solid #30363d; }
 .label-main { font-size: 1.1rem; font-weight: bold; color: #5bc0be; margin-bottom: 10px; }
@@ -65,7 +68,10 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
 
 <div id="home-screen" class="container">
     <div class="header-area">
-        <h1>🌌 Aurora Forecast Pro <span class="beta-suffix">(Beta)</span> <span class="version">v t1.0.12</span></h1>
+        <div class="title-row">
+            <h1>🌌 Aurora Forecast Pro <span class="version">v t1.0.12</span></h1>
+            <span class="beta-suffix">(Beta)</span>
+        </div>
         <div class="produce-by">Produce by Shin</div>
     </div>
 
@@ -131,7 +137,7 @@ pre { background:#0b132b; padding:12px; border-radius:8px; font-family: monospac
         <div class="modal-title" id="modal-label-title">Probability Details</div>
         <div class="score-big"><span id="score-pct">--</span>%</div>
         <div style="font-size: 0.85rem; margin-bottom: 15px;">
-            <strong>Optimized Logic (v1.1.2+):</strong>
+            <strong>Optimized Logic (v t1.0.12):</strong>
             <p>Balanced for mid-latitude observations. Includes "Horizon View" potential even if probability is 0%.</p>
             <table class="detail-table">
                 <tr><th>Item</th><th>Max</th><th>Details</th></tr>
@@ -182,7 +188,7 @@ function openModal() {
 }
 function closeModal() { document.getElementById("detailModal").style.display = "none"; }
 
-/* 共通関数 */
+/* 位置情報関連 */
 async function getLocation() {
     toggleLoading('card-loc', true);
     navigator.geolocation.getCurrentPosition(async p => {
@@ -240,7 +246,7 @@ async function reverseGeocode(lat, lon) {
     } catch (e) { document.getElementById("loc").textContent = lat.toFixed(2) + ", " + lon.toFixed(2); }
 }
 
-/* 計算ロジック (v1.1.2 継承) */
+/* 計算ロジック (v t1.0.12) */
 function calculateTotal() {
     const now = new Date(); const currentHour = now.getHours();
     const resultEl = document.getElementById("result");
@@ -266,7 +272,7 @@ function calculateTotal() {
     else { resultEl.textContent = "Low"; resultEl.className = "badge low"; }
 }
 
-/* API取得 & Map */
+/* API取得 & 地図描画 */
 async function getKp() { try { const res = await fetch(CORS + encodeURIComponent(KP_URL)); const data = await res.json(); const val = parseFloat(data[data.length - 1][1]); document.getElementById("kp").textContent = val.toFixed(1); return val; } catch(e) { return 0; } }
 async function fetchKp3DayForecast() { const el = document.getElementById("kpForecast"); const shortEl = document.getElementById("kp-short"); try { const res = await fetch(CORS + encodeURIComponent(FORECAST_URL)); const text = await res.text(); const match = text.match(/NOAA Kp index breakdown[\s\S]*?(?=\n[A-Z]|$)/i); el.innerText = match ? match[0].trim() : "Updating..."; const hr = new Date().getHours(); let targetLabel = (hr >= 21 || hr < 3) ? "🕒 In 3h" : "🌙 Tonight(21:00)"; shortEl.innerHTML = `<div>${targetLabel}: Ref 3-day forecast</div>`; } catch(e) { el.innerText = "Fetch Error"; } }
 async function checkOval() { const el = document.getElementById("oval"); const probEl = document.getElementById("oval-prob"); try { const res = await fetch(CORS + encodeURIComponent(OVAL_URL)); const data = await res.json(); cachedAuroraData = data; if (map) drawAurora(data); let bestProb = 0; let minDiff = 999; data.coordinates.forEach(p => { let adjLon = p[0] > 180 ? p[0] - 360 : p[0]; let diff = Math.abs(myLat - p[1]) + Math.abs(myLon - adjLon); if (diff < minDiff) { minDiff = diff; bestProb = p[2]; } }); lastAuroraProb = bestProb; probEl.textContent = `Probability at your location: ${bestProb}%`; el.textContent = bestProb >= 10 ? "Inside/Near Oval" : "Outside Oval"; } catch(e) { el.textContent = "Error"; } }
